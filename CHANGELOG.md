@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-12-24
+
+### Added
+- Direct agent configuration menu after creating new configuration
+- Capability legend displayed on main menu: [R]=Reasoning [I]=Image [P]=PDF
+- Provider names shown in cyan color when listing models
+- Agent selection by number in addition to name
+- Dedicated agent configuration menu for batch editing
+
+### Changed
+- Edit/Delete agent prompts now accept either number (1-6) or agent name
+- Model display now includes colored provider name for better visibility
+- After creating config, users are prompted to configure agents immediately
+- Improved workflow for setting up new configurations
+
+### Improved
+- Better visual distinction between model information components
+- More intuitive agent selection process
+- Streamlined configuration creation experience
+
 ## [0.2.0] - 2025-12-24
 
 ### Added

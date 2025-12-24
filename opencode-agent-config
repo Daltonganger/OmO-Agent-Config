@@ -10,6 +10,17 @@ const path = require('path');
 const readline = require('readline');
 const { execSync } = require('child_process');
 
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  cyan: '\x1b[36m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  gray: '\x1b[90m'
+};
+
 // Configuration paths
 const CONFIG_DIR = path.join(process.env.HOME, '.config', 'opencode');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'oh-my-opencode.json');
@@ -499,7 +510,12 @@ class AgentConfigTool {
     if (model.capabilities?.input?.pdf) caps.push('P');
     
     const capsStr = caps.length > 0 ? `[${caps.join('')}]` : '';
-    return `${model.name || model.id} (${ctx}${capsStr})`;
+    
+    // Get provider name
+    const provider = model.providerID || model.id.split('/')[0];
+    const providerStr = `${colors.cyan}${provider}${colors.reset}`;
+    
+    return `${model.name || model.id} (${ctx}${capsStr}) ${providerStr}`;
   }
 
   async prompt(question) {
@@ -903,17 +919,22 @@ class AgentConfigTool {
         await this.switchToConfiguration(name);
         console.log(`✓ Switched to: ${name}`);
         
+        // Directly enter agent configuration menu
         if (needsSetup) {
-          console.log('\nTip: Use [A] Add new agent to configure agents for OmO.');
-        } else if (choice === '1' || choice === '2') {
-          console.log('\nTip: Use [E] Edit agent model to customize agent models.');
+          console.log('\nLet\'s add agents to this configuration.');
+          await this.prompt('Press Enter to continue...');
+          await this.agentConfigMenu();
+        } else {
+          console.log('\nWould you like to configure agents now?');
+          const configureNow = await this.prompt('(yes/no): ');
+          if (configureNow.toLowerCase() === 'yes') {
+            await this.agentConfigMenu();
+          }
         }
       }
     } catch (error) {
       console.error(`Error: ${error.message}`);
     }
-
-    await this.prompt('\nPress Enter to continue...');
   }
 
   async renameConfiguration() {
@@ -1075,6 +1096,85 @@ class AgentConfigTool {
     await this.prompt('Press Enter to continue...');
   }
 
+  async agentConfigMenu() {
+    while (true) {
+      console.clear();
+      console.log('\n--- Configure Agents ---\n');
+      
+      const agents = Object.entries(this.config.agents || {});
+      
+      if (agents.length === 0) {
+        console.log('No agents configured\n');
+      } else {
+        console.log('CURRENT AGENTS:\n');
+        agents.forEach(([name, config], idx) => {
+          console.log(`  ${idx + 1}. ${name.padEnd(30)} → ${config.model}`);
+        });
+      }
+      
+      console.log('\nOPTIONS:\n');
+      console.log('  [E] Edit agent model (enter number or name)');
+      console.log('  [A] Add new agent');
+      console.log('  [D] Delete agent (enter number or name)');
+      console.log('  [X] Return to main menu');
+      
+      console.log('\nCapabilities: [R]=Reasoning [I]=Image [P]=PDF\n');
+      
+      const choice = await this.prompt('Select option: ');
+      
+      switch (choice.toLowerCase()) {
+        case 'e': {
+          const agentInput = await this.prompt('Agent # or name: ');
+          
+          const agentIdx = parseInt(agentInput) - 1;
+          let agentName = null;
+          
+          if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
+            agentName = agents[agentIdx][0];
+          } else if (this.config.agents[agentInput]) {
+            agentName = agentInput;
+          }
+          
+          if (agentName) {
+            await this.editAgent(agentName);
+          } else {
+            console.log('Agent not found');
+            await this.prompt('Press Enter to continue...');
+          }
+          break;
+        }
+        case 'a':
+          await this.addAgent();
+          break;
+        case 'd': {
+          const agentInput = await this.prompt('Agent # or name: ');
+          
+          const agentIdx = parseInt(agentInput) - 1;
+          let agentName = null;
+          
+          if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
+            agentName = agents[agentIdx][0];
+          } else if (this.config.agents[agentInput]) {
+            agentName = agentInput;
+          }
+          
+          if (agentName) {
+            await this.deleteAgent(agentName);
+          } else {
+            console.log('Agent not found');
+            await this.prompt('Press Enter to continue...');
+          }
+          break;
+        }
+        case 'x':
+          return;
+        default:
+          console.log('Invalid option');
+          await this.prompt('Press Enter to continue...');
+      }
+    }
+  }
+
   async setPreferredProviders() {
     console.clear();
     console.log('\n--- Set Preferred Providers ---\n');
@@ -1155,22 +1255,36 @@ class AgentConfigTool {
       }
 
       console.log('\nACTIONS:\n');
-      console.log('  [E] Edit agent model');
+      console.log('  [E] Edit agent model (enter number or name)');
       console.log('  [A] Add new agent');
-      console.log('  [D] Delete agent');
+      console.log('  [D] Delete agent (enter number or name)');
       console.log('  [P] Set preferred providers');
       console.log('  [M] Manage configurations');
       console.log('  [R] Restore defaults');
       console.log('  [B] View backups');
-      console.log('  [Q] Quit\n');
+      console.log('  [Q] Quit');
+      
+      // Capability legend
+      console.log('\nCapabilities: [R]=Reasoning [I]=Image [P]=PDF\n');
 
       const choice = await this.prompt('Select option: ');
 
       switch (choice.toLowerCase()) {
         case 'e': {
-          const agent = await this.prompt('Agent name: ');
-          if (this.config.agents[agent]) {
-            await this.editAgent(agent);
+          const agentInput = await this.prompt('Agent # or name: ');
+          
+          // Check if it's a number
+          const agentIdx = parseInt(agentInput) - 1;
+          let agentName = null;
+          
+          if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
+            agentName = agents[agentIdx][0];
+          } else if (this.config.agents[agentInput]) {
+            agentName = agentInput;
+          }
+          
+          if (agentName) {
+            await this.editAgent(agentName);
           } else {
             console.log('Agent not found');
             await this.prompt('Press Enter to continue...');
@@ -1181,9 +1295,20 @@ class AgentConfigTool {
           await this.addAgent();
           break;
         case 'd': {
-          const agent = await this.prompt('Agent name: ');
-          if (this.config.agents[agent]) {
-            await this.deleteAgent(agent);
+          const agentInput = await this.prompt('Agent # or name: ');
+          
+          // Check if it's a number
+          const agentIdx = parseInt(agentInput) - 1;
+          let agentName = null;
+          
+          if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
+            agentName = agents[agentIdx][0];
+          } else if (this.config.agents[agentInput]) {
+            agentName = agentInput;
+          }
+          
+          if (agentName) {
+            await this.deleteAgent(agentName);
           } else {
             console.log('Agent not found');
             await this.prompt('Press Enter to continue...');
