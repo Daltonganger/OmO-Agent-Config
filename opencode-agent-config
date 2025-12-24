@@ -670,7 +670,7 @@ class AgentConfigTool {
     }
   }
 
-  async editAgent(agentName) {
+  async editAgent(agentName, fromMenu = false) {
     const currentModel = this.config.agents[agentName]?.model || 'none';
     const newModel = await this.selectModel(agentName, currentModel);
 
@@ -681,21 +681,26 @@ class AgentConfigTool {
       this.config.agents[agentName].model = newModel;
       this.saveConfig();
       console.log(`✓ Updated ${agentName} to ${newModel}`);
-      await this.prompt('Press Enter to continue...');
+      
+      // Only prompt to continue if not from agent config menu
+      if (!fromMenu) {
+        await this.prompt('Press Enter to continue...');
+      }
     }
+    return newModel !== null;
   }
 
-  async addAgent() {
+  async addAgent(fromMenu = false) {
     console.clear();
     console.log('\n--- Add New Agent ---\n');
     
     const name = await this.prompt('Agent name: ');
-    if (!name) return;
+    if (!name) return false;
 
     if (this.config.agents[name]) {
       console.log('Agent already exists');
       await this.prompt('Press Enter to continue...');
-      return;
+      return false;
     }
 
     const model = await this.selectModel(name, null);
@@ -703,18 +708,30 @@ class AgentConfigTool {
       this.config.agents[name] = { model };
       this.saveConfig();
       console.log(`✓ Added agent ${name} with model ${model}`);
-      await this.prompt('Press Enter to continue...');
+      
+      // Only prompt to continue if not from agent config menu
+      if (!fromMenu) {
+        await this.prompt('Press Enter to continue...');
+      }
+      return true;
     }
+    return false;
   }
 
-  async deleteAgent(agentName) {
+  async deleteAgent(agentName, fromMenu = false) {
     const confirm = await this.prompt(`Delete agent "${agentName}"? (yes/no): `);
     if (confirm.toLowerCase() === 'yes') {
       delete this.config.agents[agentName];
       this.saveConfig();
       console.log(`✓ Deleted agent ${agentName}`);
-      await this.prompt('Press Enter to continue...');
+      
+      // Only prompt to continue if not from agent config menu  
+      if (!fromMenu) {
+        await this.prompt('Press Enter to continue...');
+      }
+      return true;
     }
+    return false;
   }
 
   async switchToConfiguration(configName) {
@@ -743,7 +760,8 @@ class AgentConfigTool {
         const active = name === this.configName ? ' [ACTIVE]' : '';
         const metadata = this.configManager.loadConfiguration(name);
         const modDate = new Date(metadata.modified).toLocaleDateString();
-        console.log(`  ${idx + 1}. ${name}${active}`);
+        const agentCount = Object.keys(metadata.config.agents || {}).length;
+        console.log(`  ${idx + 1}. ${name}${active} (${agentCount} agents)`);
         console.log(`     ${metadata.description}`);
         console.log(`     Modified: ${modDate}\n`);
       });
@@ -1136,7 +1154,7 @@ class AgentConfigTool {
           }
           
           if (agentName) {
-            await this.editAgent(agentName);
+            await this.editAgent(agentName, true);  // fromMenu = true
           } else {
             console.log('Agent not found');
             await this.prompt('Press Enter to continue...');
@@ -1144,7 +1162,7 @@ class AgentConfigTool {
           break;
         }
         case 'a':
-          await this.addAgent();
+          await this.addAgent(true);  // fromMenu = true
           break;
         case 'd': {
           const agentInput = await this.prompt('Agent # or name: ');
@@ -1159,7 +1177,7 @@ class AgentConfigTool {
           }
           
           if (agentName) {
-            await this.deleteAgent(agentName);
+            await this.deleteAgent(agentName, true);  // fromMenu = true
           } else {
             console.log('Agent not found');
             await this.prompt('Press Enter to continue...');
@@ -1381,10 +1399,119 @@ class AgentConfigTool {
           });
         }
       }
+      
+      // Option to restore from backup
+      if (currentConfigFiles.length > 0 || allFiles.length > 0) {
+        console.log('');
+        const restore = await this.prompt('Restore from backup? (yes/no): ');
+        if (restore.toLowerCase() === 'yes') {
+          await this.restoreFromBackup(currentConfigFiles, allFiles);
+        }
+      }
     } catch (error) {
       console.log(`Error reading backups: ${error.message}`);
     }
+  }
 
+  async restoreFromBackup(currentConfigFiles, allFiles) {
+    console.clear();
+    console.log('\n--- Restore from Backup ---\n');
+    
+    // Ask which scope
+    console.log('Restore from:\n');
+    console.log('  [1] Current configuration backups');
+    console.log('  [2] All backups');
+    console.log('  [C] Cancel\n');
+    
+    const scope = await this.prompt('Select option: ');
+    if (scope.toLowerCase() === 'c') return;
+    
+    const files = scope === '2' ? allFiles : currentConfigFiles;
+    
+    if (files.length === 0) {
+      console.log('No backups available');
+      await this.prompt('Press Enter to continue...');
+      return;
+    }
+    
+    console.clear();
+    console.log('\n--- Select Backup to Restore ---\n');
+    
+    files.slice(0, 20).forEach((file, idx) => {
+      const stats = fs.statSync(path.join(BACKUP_DIR, file));
+      const date = file.match(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/)?.[0] || '';
+      console.log(`  ${idx + 1}. ${file}`);
+      console.log(`      ${new Date(date.replace('T', ' ').replace(/-/g, ':')).toLocaleString()} (${stats.size} bytes)\n`);
+    });
+    
+    console.log('[C] Cancel\n');
+    const choice = await this.prompt('Select backup: ');
+    
+    if (choice.toLowerCase() === 'c') return;
+    
+    const idx = parseInt(choice) - 1;
+    if (idx < 0 || idx >= files.length) {
+      console.log('Invalid selection');
+      await this.prompt('Press Enter to continue...');
+      return;
+    }
+    
+    const backupFile = files[idx];
+    const backupPath = path.join(BACKUP_DIR, backupFile);
+    
+    // Extract config name from filename
+    const configName = backupFile.split('-202')[0];  // Get everything before the timestamp
+    
+    try {
+      // Load backup data
+      const backupData = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+      
+      // Show preview
+      console.clear();
+      console.log('\n--- Backup Preview ---\n');
+      console.log(`Configuration: ${configName}`);
+      console.log(`Backup file: ${backupFile}`);
+      
+      const backupConfig = backupData.config || backupData;
+      const agentCount = Object.keys(backupConfig.agents || {}).length;
+      console.log(`\nAgents in backup: ${agentCount}`);
+      
+      if (agentCount > 0) {
+        console.log('\nAgents:');
+        Object.entries(backupConfig.agents).forEach(([name, config]) => {
+          console.log(`  - ${name} → ${config.model}`);
+        });
+      }
+      
+      console.log('\n⚠️  Warning: This will replace the current configuration!');
+      console.log('A backup of the current state will be created first.\n');
+      
+      const confirm = await this.prompt('Proceed with restore? (yes/no): ');
+      
+      if (confirm.toLowerCase() === 'yes') {
+        // Create backup of current state
+        this.createBackup();
+        
+        // Restore from backup
+        const description = backupData.description || `Restored from ${backupFile}`;
+        this.configMetadata = this.configManager.saveConfiguration(
+          this.configName,
+          description,
+          backupConfig
+        );
+        this.config = backupConfig;
+        this.configManager.updateMainConfigFile(this.config);
+        
+        console.log(`\n✓ Successfully restored from backup`);
+        console.log(`  Configuration: ${this.configName}`);
+        console.log(`  Agents: ${agentCount}`);
+      } else {
+        console.log('Restore cancelled');
+      }
+    } catch (error) {
+      console.error(`\nError restoring backup: ${error.message}`);
+    }
+    
     await this.prompt('\nPress Enter to continue...');
   }
 
@@ -1472,7 +1599,8 @@ EXAMPLES:
       const metadata = this.configManager.loadConfiguration(name);
       const active = name === this.configName ? ' [ACTIVE]' : '';
       const modDate = new Date(metadata.modified).toLocaleDateString();
-      console.log(`  ${name}${active}`);
+      const agentCount = Object.keys(metadata.config.agents || {}).length;
+      console.log(`  ${name}${active} (${agentCount} agents)`);
       console.log(`  ${metadata.description}`);
       console.log(`  Modified: ${modDate}\n`);
     });

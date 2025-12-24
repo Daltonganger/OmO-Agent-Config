@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-24
+
+### Added
+- **Backup restore from UI** - Full restore functionality with preview and confirmation
+- **Agent count display** - Show number of agents in all configuration lists
+- Backup preview showing agents and models before restore
+- Warning prompt with safety backup before restore
+- Scope selection (current config or all backups) for restore
+
+### Changed
+- **Stay in Agent Config Menu after edits** - No longer returns to main menu after each operation
+- Agent operations (add/edit/delete) stay in context when called from Agent Config Menu
+- Reduced navigation friction when configuring multiple agents
+- Configuration lists show agent counts: `config-name (6 agents)`
+
+### Improved
+- Workflow efficiency for multi-agent configuration
+- Backup management now complete with restore capability
+- Better visual indication of configuration size
+
 ## [0.2.1] - 2025-12-24
 
 ### Added

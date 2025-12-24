@@ -20,6 +20,66 @@
 
 ---
 
+## Prioritized UX Improvements
+
+### High Priority (Next Release)
+
+#### 1. Stay in Agent Config After Edits
+**Status:** Planned
+**Effort:** Low
+**Impact:** High - Reduces menu navigation when configuring multiple agents
+**Details:** After editing/adding an agent, stay in Agent Config Menu instead of returning to Main Menu
+
+#### 2. Show Agent Count in Configuration Lists
+**Status:** Planned
+**Effort:** Low
+**Impact:** Low - Quick visual indicator of config size
+**Details:** Display agent count next to config name: `work-config (6 agents)`
+
+#### 3. Add Backup Restore from UI
+**Status:** Planned
+**Effort:** Medium
+**Impact:** High - Complete the backup feature
+**Details:** Allow restoring from backup directly in UI, show diff preview, confirm before restore
+
+### Medium Priority
+
+- **Bulk Agent Operations:** Update multiple agents at once
+- **Edit Configuration Description:** Update description without export/import
+- **Persistent Provider Filters:** Default to preferred providers in search
+
+### Low Priority / Future
+
+- **Model Comparison:** Side-by-side comparison of multiple models
+- **Model Bookmarks:** Save frequently-used models
+- **Agent Reordering:** Custom order for agents in list
+- **Reload Models Command:** Refresh model list without restart
+
+---
+
+## TUI Framework Upgrade
+
+**Consideration:** Migrate from readline-based CLI to full TUI (like OpenCode)
+
+**Potential Frameworks:**
+- **blessed** (npm) - Full-featured TUI framework for Node.js
+- **ink** (npm) - React-based TUI components
+- **prompts** (npm) - Better interactive prompts
+
+**Benefits:**
+- Better visual hierarchy
+- Mouse support
+- More intuitive navigation
+- Richer formatting options
+- Progress indicators
+
+**Effort:** High (major refactor)
+**Impact:** Medium-High (better UX, but current CLI works well)
+
+**Decision:** Defer until after quick wins are implemented
+
+---
+
 ## Other Future Enhancements
 
 Add additional enhancement ideas here as they come up.
