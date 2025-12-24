@@ -109,7 +109,7 @@ class AgentConfigTool {
   async loadModels() {
     try {
       console.log('Loading available models...');
-      const output = execSync('opencode models --verbose', { encoding: 'utf8' });
+      const output = execSync('opencode models --verbose 2>/dev/null', { encoding: 'utf8' });
       this.models = this.parseModels(output);
       this.extractProviders();
       console.log(`Loaded ${this.models.length} models from ${this.providers.length} providers\n`);
@@ -124,19 +124,21 @@ class AgentConfigTool {
     const lines = output.split('\n');
     let currentModel = null;
     let jsonBuffer = '';
-    let inJson = false;
+    let braceCount = 0;
 
     for (const line of lines) {
-      if (line.match(/^[a-z0-9-]+\/[a-z0-9-.:]+$/i)) {
+      if (line.match(/^[a-z0-9-]+\/[a-z0-9-.:/]+$/i) && braceCount === 0) {
         currentModel = line.trim();
         jsonBuffer = '';
-        inJson = false;
-      } else if (line.trim() === '{') {
-        inJson = true;
-        jsonBuffer = line;
-      } else if (inJson) {
-        jsonBuffer += '\n' + line;
-        if (line.trim() === '}') {
+      } else if (currentModel) {
+        // Count braces to handle nested objects
+        const openBraces = (line.match(/{/g) || []).length;
+        const closeBraces = (line.match(/}/g) || []).length;
+        braceCount += openBraces - closeBraces;
+        
+        jsonBuffer += (jsonBuffer ? '\n' : '') + line;
+        
+        if (braceCount === 0 && jsonBuffer) {
           try {
             const modelData = JSON.parse(jsonBuffer);
             models.push({
@@ -146,7 +148,7 @@ class AgentConfigTool {
           } catch (e) {
             // Skip malformed JSON
           }
-          inJson = false;
+          currentModel = null;
           jsonBuffer = '';
         }
       }
@@ -158,7 +160,8 @@ class AgentConfigTool {
   extractProviders() {
     const providerSet = new Set();
     this.models.forEach(model => {
-      const provider = model.id.split('/')[0];
+      // Use providerID from model data, fall back to splitting ID if not present
+      const provider = model.providerID || model.id.split('/')[0];
       if (provider) {
         providerSet.add(provider);
       }
@@ -214,7 +217,7 @@ class AgentConfigTool {
     // Preferred provider bonus
     const preferredProviders = this.config?.preferred_providers || [];
     if (preferredProviders.length > 0) {
-      const provider = model.id.split('/')[0];
+      const provider = model.providerID || model.id.split('/')[0];
       const providerIndex = preferredProviders.indexOf(provider);
       if (providerIndex !== -1) {
         // Higher bonus for providers earlier in the preference list
@@ -355,7 +358,7 @@ class AgentConfigTool {
     
     console.log('AVAILABLE PROVIDERS:\n');
     this.providers.forEach((provider, idx) => {
-      const count = this.models.filter(m => m.id.startsWith(provider + '/')).length;
+      const count = this.models.filter(m => (m.providerID || m.id.split('/')[0]) === provider).length;
       console.log(`  ${idx + 1}. ${provider} (${count} models)`);
     });
 
@@ -385,7 +388,7 @@ class AgentConfigTool {
     }
 
     const filtered = this.models.filter(m => {
-      const provider = m.id.split('/')[0];
+      const provider = m.providerID || m.id.split('/')[0];
       return selectedProviders.includes(provider);
     });
 
@@ -493,7 +496,7 @@ class AgentConfigTool {
     
     console.log('AVAILABLE PROVIDERS:\n');
     this.providers.forEach((provider, idx) => {
-      const count = this.models.filter(m => m.id.startsWith(provider + '/')).length;
+      const count = this.models.filter(m => (m.providerID || m.id.split('/')[0]) === provider).length;
       const preferred = currentPreferred.includes(provider) ? ' (preferred)' : '';
       console.log(`  ${idx + 1}. ${provider} (${count} models)${preferred}`);
     });
