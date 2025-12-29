@@ -1,12 +1,10 @@
 #!/bin/bash
 
-# OmO Agent Config Installation Script
-# Installs the OpenCode agent configuration tool
-
 set -e
 
 TOOL_NAME="opencode-agent-config"
 INSTALL_DIR="$HOME/.config/opencode/bin"
+LIB_DIR="$HOME/.config/opencode/lib"
 BACKUP_DIR="$HOME/.config/opencode/backups"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -16,7 +14,6 @@ echo "OmO Agent Config - Installation"
 echo "========================================================================"
 echo ""
 
-# Detect shell
 if [ -n "$ZSH_VERSION" ]; then
     SHELL_RC="$HOME/.zshrc"
     SHELL_NAME="zsh"
@@ -32,22 +29,31 @@ echo "Detected shell: $SHELL_NAME"
 echo "Shell RC file: $SHELL_RC"
 echo ""
 
-# Create directories
 echo "Creating directories..."
 mkdir -p "$INSTALL_DIR"
+mkdir -p "$LIB_DIR/ui"
 mkdir -p "$BACKUP_DIR"
 echo "✓ Created $INSTALL_DIR"
+echo "✓ Created $LIB_DIR"
 echo "✓ Created $BACKUP_DIR"
 echo ""
 
-# Copy tool
-echo "Installing tool..."
-cp "$SCRIPT_DIR/$TOOL_NAME" "$INSTALL_DIR/$TOOL_NAME"
+echo "Installing modules..."
+cp "$SCRIPT_DIR/lib/constants.js" "$LIB_DIR/"
+cp "$SCRIPT_DIR/lib/config-manager.js" "$LIB_DIR/"
+cp "$SCRIPT_DIR/lib/model-loader.js" "$LIB_DIR/"
+cp "$SCRIPT_DIR/lib/validation.js" "$LIB_DIR/"
+cp "$SCRIPT_DIR/lib/ui/prompts.js" "$LIB_DIR/ui/"
+cp "$SCRIPT_DIR/lib/ui/menus.js" "$LIB_DIR/ui/"
+echo "✓ Installed lib modules to $LIB_DIR"
+echo ""
+
+echo "Installing entry point..."
+cp "$SCRIPT_DIR/bin/$TOOL_NAME" "$INSTALL_DIR/$TOOL_NAME"
 chmod +x "$INSTALL_DIR/$TOOL_NAME"
 echo "✓ Installed $TOOL_NAME to $INSTALL_DIR"
 echo ""
 
-# Add to PATH
 if grep -q "opencode/bin" "$SHELL_RC" 2>/dev/null; then
     echo "✓ Tool path already in $SHELL_RC"
 else

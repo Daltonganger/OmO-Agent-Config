@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-12-29
+
+### Added
+- **Bulk Agent Operations** - New options in Agent Config Menu:
+  - [A] Auto-optimize all - Apply top recommended model to each agent based on profile
+  - [L] Bulk edit - Apply same model to multiple selected agents at once
+- **Persistent Provider Filters** - Search/filter now shows preferred providers option:
+  - [P] Use preferred providers only in search
+  - ★ markers show preferred providers in provider lists
+- **Model Comparison** - [K] Compare up to 4 models side-by-side:
+  - Shows provider, context size, capabilities (reasoning, thinking, image, PDF)
+  - Cost comparison (input/output pricing)
+  - Fast model indicator
+- **Model Bookmarks** - [*] Save frequently-used models for quick access:
+  - Add/remove bookmarks from any model selection
+  - Quick select from bookmarks when assigning models
+- **Agent Reordering** - [O] Customize agent display order:
+  - Swap agent positions with simple "# #" command
+  - Order persists across sessions (JS object insertion order)
+- **Reload Models** - [L] Refresh model list without restarting tool:
+  - Useful when providers add new models
+  - Shows count of loaded models and providers
+
+### Changed
+- **Modular Architecture** - Codebase split into `lib/` structure:
+  - `lib/constants.js` - Colors, paths, defaults, agent profiles
+  - `lib/config-manager.js` - ConfigurationManager class
+  - `lib/model-loader.js` - Model parsing, scoring, recommendations
+  - `lib/validation.js` - Config validation, sync logic
+  - `lib/ui/menus.js` - Main AgentConfigTool class, TUI menus
+  - `lib/ui/prompts.js` - Input helpers, formatModel
+- Entry point moved to `bin/opencode-agent-config`
+- `install.sh` updated to copy modular structure
+
+### Improved
+- Better workflow for power users managing multiple agents
+- Faster model selection with bookmarks and persistent filters
+- Easier comparison when choosing between similar models
+
+## [0.3.1] - 2025-12-24
+
+### Removed
+- **"Add agent" functionality** - Removed non-functional agent creation feature
+- User-added agents without system prompts don't work in OpenCode/OmO ecosystem
+
+### Added
+- **Agent information screen** - [?] option shows all OmO built-in agents with:
+  - Agent name and description
+  - Preferred model capabilities
+  - Minimum context requirements
+- `docs/CUSTOM-AGENTS.md` - Complete specification for future custom agent support
+- UI messaging indicating tool manages OmO built-in agents only
+
+### Changed
+- Main menu now shows "[?] Show agent information" instead of "[A] Add new agent"
+- Agent Config Menu updated with info option, removed add option
+- UI footer shows "Managing OmO built-in agents only (see [?] for custom agents)"
+- Tool scope clarified: model assignment for Oh My Opencode's curated agents
+
+### Improved
+- Tool is now honest about its functionality and limitations
+- Prevents users from creating non-functional agent entries
+- Clear path to full custom agent creation in future release (Option 2)
+
 ## [0.3.0] - 2025-12-24
 
 ### Added

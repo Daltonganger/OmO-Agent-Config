@@ -1,0 +1,31 @@
+#!/usr/bin/env node
+
+const path = require('path');
+const fs = require('fs');
+
+let libPath;
+const localLib = path.join(__dirname, '..', 'lib');
+const installedLib = path.join(process.env.HOME, '.config', 'opencode', 'lib');
+
+if (fs.existsSync(path.join(localLib, 'ui', 'menus.js'))) {
+  libPath = localLib;
+} else {
+  libPath = installedLib;
+}
+
+const { AgentConfigTool } = require(path.join(libPath, 'ui', 'menus'));
+
+const args = process.argv.slice(2);
+const tool = new AgentConfigTool();
+
+if (args.length > 0) {
+  tool.handleCliArgs(args).catch(error => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+} else {
+  tool.run().catch(error => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

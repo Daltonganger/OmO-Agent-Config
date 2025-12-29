@@ -1,6 +1,19 @@
 # TODO - Future Enhancements
 
-## LMstudio Model Support
+## Big Features (v0.5.0+)
+
+### Custom Agent Creation
+**Status:** Documented, not planned for immediate implementation
+**Priority:** Medium
+**Effort:** High (2-3 weeks)
+
+Full custom agent support with system prompts, templates, and validation.
+See `docs/CUSTOM-AGENTS.md` for complete specification.
+
+### LMstudio Model Support
+**Status:** Blocked - requires OpenCode plugin investigation
+**Priority:** Medium
+**Effort:** Medium
 
 **Issue**: LMstudio plugin initializes but models don't appear in `opencode models` output
 
@@ -8,78 +21,46 @@
 - LMstudio is running with models loaded (confirmed via http://localhost:1234/v1/models)
 - Plugin shows `[opencode-lmstudio] LM Studio plugin initialized` 
 - However, no lmstudio-prefixed models appear in the model list
-- Available LMstudio models include: nvidia/nemotron-3-nano, openai/gpt-oss-120b, qwen2.5-14b-instruct-1m, meta-llama-3.1-8b-instruct, mistralai/mistral-7b-instruct-v0.3
 
 **Possible Solutions**:
 1. Investigate if opencode-lmstudio plugin needs additional configuration
 2. Check if there's a different command to query plugin-provided models
-3. Add manual LMstudio model support (allow users to manually add models visible in LMstudio)
+3. Add manual LMstudio model support (allow users to manually add models)
 4. Work with OpenCode team to fix plugin integration
 
-**Priority**: Medium - Users can still use LMstudio models if they manually type the model ID, but they won't appear in the recommended/searchable list
+### TUI Framework Upgrade
+**Status:** Deferred - current readline UI is sufficient
+**Decision:** Not needed; tool scope is narrow and workflow-focused
 
 ---
 
-## Prioritized UX Improvements
+## Completed Releases
 
-### High Priority (Next Release)
+### v0.4.0 (Phase 3 - Quality of Life)
+- [x] **Bulk Agent Operations** - Auto-optimize all agents, bulk edit multiple agents
+- [x] **Persistent Provider Filters** - Default to preferred providers in search, ★ markers
+- [x] **Model Comparison** - Side-by-side comparison of up to 4 models
+- [x] **Model Bookmarks** - Save and select frequently-used models
+- [x] **Agent Reordering** - Custom display order for agents in list
+- [x] **Reload Models** - Refresh model list without restart
+- [x] **Modular Codebase** - Split into lib/ structure for maintainability
 
-#### 1. Stay in Agent Config After Edits
-**Status:** Planned
-**Effort:** Low
-**Impact:** High - Reduces menu navigation when configuring multiple agents
-**Details:** After editing/adding an agent, stay in Agent Config Menu instead of returning to Main Menu
+### v0.3.1
+- Removed "Add agent" functionality (non-functional without system prompts)
+- Added agent information screen [?]
+- Created `docs/CUSTOM-AGENTS.md`
 
-#### 2. Show Agent Count in Configuration Lists
-**Status:** Planned
-**Effort:** Low
-**Impact:** Low - Quick visual indicator of config size
-**Details:** Display agent count next to config name: `work-config (6 agents)`
+### v0.3.0
+- Backup restore from UI with preview
+- Agent count display in configuration lists
+- Stay in Agent Config Menu after edits
 
-#### 3. Add Backup Restore from UI
-**Status:** Planned
-**Effort:** Medium
-**Impact:** High - Complete the backup feature
-**Details:** Allow restoring from backup directly in UI, show diff preview, confirm before restore
+### v0.2.x
+- CLI argument support (-s, -l, -c, -h)
+- Copy from any configuration
+- Provider filtering and preferences
 
-### Medium Priority
-
-- **Bulk Agent Operations:** Update multiple agents at once
-- **Edit Configuration Description:** Update description without export/import
-- **Persistent Provider Filters:** Default to preferred providers in search
-
-### Low Priority / Future
-
-- **Model Comparison:** Side-by-side comparison of multiple models
-- **Model Bookmarks:** Save frequently-used models
-- **Agent Reordering:** Custom order for agents in list
-- **Reload Models Command:** Refresh model list without restart
-
----
-
-## TUI Framework Upgrade
-
-**Consideration:** Migrate from readline-based CLI to full TUI (like OpenCode)
-
-**Potential Frameworks:**
-- **blessed** (npm) - Full-featured TUI framework for Node.js
-- **ink** (npm) - React-based TUI components
-- **prompts** (npm) - Better interactive prompts
-
-**Benefits:**
-- Better visual hierarchy
-- Mouse support
-- More intuitive navigation
-- Richer formatting options
-- Progress indicators
-
-**Effort:** High (major refactor)
-**Impact:** Medium-High (better UX, but current CLI works well)
-
-**Decision:** Defer until after quick wins are implemented
-
----
-
-## Other Future Enhancements
-
-Add additional enhancement ideas here as they come up.
+### v0.1.0
+- Named configuration profiles
+- Configuration management (CRUD)
+- Export/import functionality

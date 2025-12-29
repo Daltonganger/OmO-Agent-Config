@@ -17,7 +17,7 @@ OmO Agent Config is a user-friendly command-line tool that simplifies the proces
 - **Extensive Model Catalog** - Browse 200+ models from OpenCode, Google, Anthropic, xAI, OpenRouter
 - **Easy Restore** - One-click restore to default configuration
 - **Search & Filter** - Quickly find models by provider, name, or capabilities
-- **Agent Management** - Add, edit, or delete agents through an intuitive interface
+- **Agent Information** - View detailed information about Oh My Opencode's built-in agents
 
 ## Prerequisites
 
@@ -108,13 +108,16 @@ CURRENT AGENTS:
 ACTIONS:
 
   [E] Edit agent model
-  [A] Add new agent
   [D] Delete agent
+  [?] Show agent information
   [P] Set preferred providers
   [M] Manage configurations
   [R] Restore defaults
   [B] View backups
   [Q] Quit
+
+Capabilities: [R]=Reasoning [I]=Image [P]=PDF
+Managing OmO built-in agents only (see [?] for custom agents)
 ```
 
 ### Workflow Examples
@@ -127,12 +130,14 @@ ACTIONS:
 4. Select a model or press `S` to search all models
 5. Confirm your selection
 
-#### Add a New Agent
+#### Show Agent Information
 
-1. Press `A` to add
-2. Enter a unique agent name
-3. Select a model from recommendations or search
-4. The agent is created and saved with automatic backup
+1. Press `?` to view agent info
+2. See all Oh My Opencode built-in agents with:
+   - Description and purpose
+   - Preferred capabilities
+   - Minimum context requirements
+3. Note about custom agent creation (see `docs/CUSTOM-AGENTS.md`)
 
 #### Restore Default Configuration
 

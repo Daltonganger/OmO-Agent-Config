@@ -21,6 +21,13 @@ const colors = {
   gray: '\x1b[90m'
 };
 
+// Validate HOME environment variable
+if (!process.env.HOME) {
+  console.error('Error: HOME environment variable is not set.');
+  console.error('This tool requires HOME to be defined to locate configuration files.');
+  process.exit(1);
+}
+
 // Configuration paths
 const CONFIG_DIR = path.join(process.env.HOME, '.config', 'opencode');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'oh-my-opencode.json');
@@ -29,23 +36,27 @@ const CONFIGS_DIR = path.join(CONFIG_DIR, 'configs');
 const ACTIVE_CONFIG_FILE = path.join(CONFIG_DIR, 'active-config.json');
 
 // Default agent configurations
+// Based on Oh My Opencode defaults: https://github.com/code-yeongyu/oh-my-opencode
 const DEFAULTS = {
   "google_auth": false,
   "agents": {
     "oracle": {
-      "model": "opencode/gpt-5.2"
+      "model": "openai/gpt-5.2"
     },
     "Sisyphus": {
-      "model": "google/claude-opus-4-5-thinking"
+      "model": "anthropic/claude-opus-4-5"
     },
     "librarian": {
-      "model": "google/claude-sonnet-4-5"
+      "model": "anthropic/claude-sonnet-4-5"
+    },
+    "explore": {
+      "model": "opencode/grok-code"
     },
     "frontend-ui-ux-engineer": {
-      "model": "google/gemini-3-pro-high"
+      "model": "google/gemini-3-pro-preview"
     },
     "document-writer": {
-      "model": "google/gemini-3-flash"
+      "model": "google/gemini-3-pro-preview"
     },
     "multimodal-looker": {
       "model": "google/gemini-3-flash"
@@ -110,6 +121,11 @@ class ConfigurationManager {
       const data = fs.readFileSync(configPath, 'utf8');
       return JSON.parse(data);
     } catch (error) {
+      if (error.code === 'ENOENT') {
+        throw new Error(`Configuration "${name}" not found at ${configPath}`);
+      } else if (error instanceof SyntaxError) {
+        throw new Error(`Configuration "${name}" has invalid JSON. Check ${configPath} for syntax errors.`);
+      }
       throw new Error(`Failed to load configuration "${name}": ${error.message}`);
     }
   }
@@ -249,35 +265,42 @@ class ConfigurationManager {
 }
 
 // Agent characteristics for recommendations
+// Agent profiles based on Oh My Opencode's actual agent purposes
+// See: https://github.com/code-yeongyu/oh-my-opencode/blob/dev/src/agents/AGENTS.md
 const AGENT_PROFILES = {
   "oracle": {
-    description: "Strategic reasoning and complex problem solving",
+    description: "Architecture decisions, debugging, code review (GPT-5.2 class)",
     preferred: ["reasoning", "large_context"],
     minContext: 128000
   },
   "Sisyphus": {
-    description: "Extended thinking for complex multi-step tasks",
+    description: "Primary orchestrator with extended thinking (Opus class)",
     preferred: ["reasoning", "thinking", "large_context"],
     minContext: 128000
   },
   "librarian": {
-    description: "Research, knowledge retrieval, and comprehension",
-    preferred: ["large_context", "fast"],
+    description: "Multi-repo research, docs, GitHub examples (Sonnet class)",
+    preferred: ["reasoning", "large_context"],
     minContext: 128000
   },
+  "explore": {
+    description: "Fast contextual grep for codebase exploration (Grok/Flash class)",
+    preferred: ["fast", "large_context"],
+    minContext: 64000
+  },
   "frontend-ui-ux-engineer": {
-    description: "UI/UX work with visual understanding",
-    preferred: ["multimodal", "image_input"],
+    description: "UI/UX code generation with visual understanding (Gemini Pro class)",
+    preferred: ["reasoning", "multimodal", "image_input"],
     minContext: 64000
   },
   "document-writer": {
-    description: "Fast, efficient text generation and documentation",
-    preferred: ["fast", "text_output"],
-    minContext: 32000
+    description: "Technical documentation and writing (Gemini Pro class)",
+    preferred: ["reasoning", "text_output", "large_context"],
+    minContext: 64000
   },
   "multimodal-looker": {
-    description: "Visual analysis and image/PDF understanding",
-    preferred: ["multimodal", "image_input", "pdf_input"],
+    description: "PDF/image analysis, visual content (Flash class)",
+    preferred: ["multimodal", "image_input", "pdf_input", "fast"],
     minContext: 32000
   }
 };
@@ -316,19 +339,256 @@ class AgentConfigTool {
       this.configManager.updateMainConfigFile(this.config);
     } catch (error) {
       console.error(`Error loading config: ${error.message}`);
+      console.error('\nPossible causes:');
+      console.error('  1. Configuration file is corrupted or has invalid JSON');
+      console.error('  2. File permissions issue');
+      console.error('\nTo fix:');
+      console.error(`  - Check file permissions: ls -la ${CONFIGS_DIR}`);
+      console.error(`  - Restore from backup: ls ${BACKUP_DIR}`);
+      console.error('  - Delete configs dir and restart to regenerate defaults:');
+      console.error(`    rm -rf ${CONFIGS_DIR} && opencode-agent-config`);
       process.exit(1);
+    }
+  }
+
+  /**
+   * Validate config against DEFAULTS and detect missing agents/MCPs.
+   * Returns object with missing items, or null if config is up-to-date.
+   */
+  validateConfig() {
+    const issues = {
+      missingAgents: [],
+      missingMcps: [],
+      extraAgents: [],
+      extraMcps: []
+    };
+
+    const configAgents = this.config?.agents || {};
+    const configMcps = this.config?.mcps || {};
+    const defaultAgents = DEFAULTS.agents || {};
+    const defaultMcps = DEFAULTS.mcps || {};
+
+    // Check for missing agents (in DEFAULTS but not in config)
+    for (const agentName of Object.keys(defaultAgents)) {
+      if (!configAgents[agentName]) {
+        issues.missingAgents.push({
+          name: agentName,
+          defaultModel: defaultAgents[agentName].model,
+          description: AGENT_PROFILES[agentName]?.description || 'OmO built-in agent'
+        });
+      }
+    }
+
+    // Check for missing MCPs (in DEFAULTS but not in config)
+    for (const mcpName of Object.keys(defaultMcps)) {
+      if (!configMcps[mcpName]) {
+        issues.missingMcps.push({
+          name: mcpName,
+          config: defaultMcps[mcpName]
+        });
+      }
+    }
+
+    // Check for extra agents (in config but not in DEFAULTS - could be deprecated or custom)
+    for (const agentName of Object.keys(configAgents)) {
+      if (!defaultAgents[agentName]) {
+        issues.extraAgents.push({
+          name: agentName,
+          model: configAgents[agentName].model
+        });
+      }
+    }
+
+    // Check for extra MCPs (in config but not in DEFAULTS)
+    for (const mcpName of Object.keys(configMcps)) {
+      if (!defaultMcps[mcpName]) {
+        issues.extraMcps.push({
+          name: mcpName
+        });
+      }
+    }
+
+    const hasIssues = issues.missingAgents.length > 0 || 
+                      issues.missingMcps.length > 0 ||
+                      issues.extraAgents.length > 0 ||
+                      issues.extraMcps.length > 0;
+
+    return hasIssues ? issues : null;
+  }
+
+  /**
+   * Show validation issues and offer to sync config with DEFAULTS.
+   * Called after loadConfig in interactive mode.
+   */
+  async promptConfigSync() {
+    const issues = this.validateConfig();
+    if (!issues) return;
+
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`${colors.yellow}⚠ Configuration Sync Available${colors.reset}`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    console.log('Your configuration differs from the latest OmO defaults.\n');
+
+    // Show missing agents
+    if (issues.missingAgents.length > 0) {
+      console.log(`${colors.cyan}NEW AGENTS available:${colors.reset}`);
+      for (const agent of issues.missingAgents) {
+        console.log(`  + ${colors.green}${agent.name}${colors.reset}`);
+        console.log(`    ${agent.description}`);
+        console.log(`    Default model: ${agent.defaultModel}\n`);
+      }
+    }
+
+    // Show missing MCPs
+    if (issues.missingMcps.length > 0) {
+      console.log(`${colors.cyan}NEW MCPs available:${colors.reset}`);
+      for (const mcp of issues.missingMcps) {
+        console.log(`  + ${colors.green}${mcp.name}${colors.reset}`);
+        console.log(`    Type: ${mcp.config.type || 'unknown'}\n`);
+      }
+    }
+
+    // Show extra agents (informational - won't remove)
+    if (issues.extraAgents.length > 0) {
+      console.log(`${colors.dim}EXTRA agents in your config (not in defaults):${colors.reset}`);
+      for (const agent of issues.extraAgents) {
+        console.log(`  ? ${agent.name} → ${agent.model}`);
+      }
+      console.log(`  ${colors.dim}(These will be kept - may be custom or deprecated)${colors.reset}\n`);
+    }
+
+    // Show extra MCPs (informational)
+    if (issues.extraMcps.length > 0) {
+      console.log(`${colors.dim}EXTRA MCPs in your config (not in defaults):${colors.reset}`);
+      for (const mcp of issues.extraMcps) {
+        console.log(`  ? ${mcp.name}`);
+      }
+      console.log(`  ${colors.dim}(These will be kept)${colors.reset}\n`);
+    }
+
+    // Offer to sync
+    if (issues.missingAgents.length > 0 || issues.missingMcps.length > 0) {
+      console.log('Options:');
+      console.log('  [A] Add all missing agents and MCPs');
+      console.log('  [S] Select which to add');
+      console.log('  [N] Skip for now\n');
+
+      const choice = await this.prompt('Choose option: ');
+
+      switch (choice.toLowerCase()) {
+        case 'a':
+          await this.addAllMissing(issues);
+          break;
+        case 's':
+          await this.selectiveSync(issues);
+          break;
+        case 'n':
+        default:
+          console.log('\nSkipped. You can sync later from the main menu.\n');
+          break;
+      }
+    } else {
+      await this.prompt('Press Enter to continue...');
+    }
+  }
+
+  /**
+   * Add all missing agents and MCPs to config.
+   */
+  async addAllMissing(issues) {
+    let added = 0;
+
+    // Add missing agents
+    if (!this.config.agents) this.config.agents = {};
+    for (const agent of issues.missingAgents) {
+      this.config.agents[agent.name] = { model: agent.defaultModel };
+      added++;
+    }
+
+    // Add missing MCPs
+    if (!this.config.mcps) this.config.mcps = {};
+    for (const mcp of issues.missingMcps) {
+      this.config.mcps[mcp.name] = mcp.config;
+      added++;
+    }
+
+    if (added > 0) {
+      this.saveConfig();
+      console.log(`\n${colors.green}✓ Added ${added} items to configuration.${colors.reset}\n`);
+    }
+  }
+
+  /**
+   * Let user select which missing items to add.
+   */
+  async selectiveSync(issues) {
+    let added = 0;
+
+    // Agents
+    if (issues.missingAgents.length > 0) {
+      console.log('\n--- Missing Agents ---\n');
+      for (const agent of issues.missingAgents) {
+        const answer = await this.prompt(`Add ${agent.name}? (${agent.defaultModel}) [Y/n]: `);
+        if (answer.toLowerCase() !== 'n') {
+          if (!this.config.agents) this.config.agents = {};
+          this.config.agents[agent.name] = { model: agent.defaultModel };
+          added++;
+          console.log(`  ${colors.green}✓ Added ${agent.name}${colors.reset}`);
+        }
+      }
+    }
+
+    // MCPs
+    if (issues.missingMcps.length > 0) {
+      console.log('\n--- Missing MCPs ---\n');
+      for (const mcp of issues.missingMcps) {
+        const answer = await this.prompt(`Add ${mcp.name}? [Y/n]: `);
+        if (answer.toLowerCase() !== 'n') {
+          if (!this.config.mcps) this.config.mcps = {};
+          this.config.mcps[mcp.name] = mcp.config;
+          added++;
+          console.log(`  ${colors.green}✓ Added ${mcp.name}${colors.reset}`);
+        }
+      }
+    }
+
+    if (added > 0) {
+      this.saveConfig();
+      console.log(`\n${colors.green}✓ Added ${added} items to configuration.${colors.reset}\n`);
+    } else {
+      console.log('\nNo changes made.\n');
     }
   }
 
   async loadModels() {
     try {
-      console.log('Loading available models...');
-      const output = execSync('opencode models --verbose 2>/dev/null', { encoding: 'utf8' });
+      process.stdout.write('Loading available models');
+      
+      // Check if opencode command exists
+      let output;
+      try {
+        output = execSync('opencode models --verbose 2>/dev/null', { encoding: 'utf8' });
+      } catch (execError) {
+        console.log('\n');
+        console.error('Error: Failed to run "opencode models" command.');
+        console.error('\nPossible causes:');
+        console.error('  1. OpenCode is not installed');
+        console.error('  2. OpenCode is not in your PATH');
+        console.error('  3. OpenCode configuration issue');
+        console.error('\nTo fix:');
+        console.error('  - Install OpenCode: npm install -g opencode-ai');
+        console.error('  - Verify installation: opencode --version');
+        console.error('  - Check PATH includes OpenCode location');
+        process.exit(1);
+      }
+      
+      process.stdout.write('... parsing');
       this.models = this.parseModels(output);
       this.extractProviders();
-      console.log(`Loaded ${this.models.length} models from ${this.providers.length} providers\n`);
+      console.log(` ✓\nLoaded ${this.models.length} models from ${this.providers.length} providers\n`);
     } catch (error) {
-      console.error(`Error loading models: ${error.message}`);
+      console.error(`\nError loading models: ${error.message}`);
       process.exit(1);
     }
   }
@@ -383,45 +643,92 @@ class AgentConfigTool {
     this.providers = Array.from(providerSet).sort();
   }
 
+  /**
+   * Score a model for a given agent type.
+   * 
+   * Scoring logic:
+   * - Base context score: Graduated based on how well it meets minContext
+   * - Preferred capabilities: Bonus points for each matching preference
+   * - Provider preference: Bonus for preferred providers
+   * - Penalty: Models that don't meet minimum context get negative score
+   */
   scoreModel(model, agentType) {
     const profile = AGENT_PROFILES[agentType];
     if (!profile) return 0;
 
     let score = 0;
+    const caps = model.capabilities || {};
+    const context = model.limit?.context || 0;
+    const minContext = profile.minContext || 32000;
 
-    // Context window check
-    if (model.limit?.context >= profile.minContext) {
+    // Context window scoring (graduated, not binary)
+    if (context >= minContext) {
+      // Base points for meeting minimum
       score += 10;
+      // Bonus for exceeding minimum (up to +10 more)
+      const contextRatio = Math.min(context / minContext, 4); // Cap at 4x
+      score += Math.floor((contextRatio - 1) * 3.33); // +3.33 per multiple
+    } else {
+      // Penalty for not meeting minimum context
+      const deficit = (minContext - context) / minContext;
+      score -= Math.floor(deficit * 20); // Up to -20 for severely undersized
     }
 
-    // Capability scoring
-    const caps = model.capabilities || {};
-    
+    // Capability scoring with improved detection
     for (const pref of profile.preferred) {
       switch (pref) {
         case "reasoning":
-          if (caps.reasoning) score += 15;
+          // Check explicit reasoning capability OR extended thinking
+          if (caps.reasoning) {
+            score += 15;
+          } else if (this.hasExtendedThinking(model)) {
+            // Extended thinking models are reasoning-capable even if API says false
+            score += 15;
+          }
           break;
+
         case "thinking":
-          if (model.name?.toLowerCase().includes('thinking') || 
-              model.id?.toLowerCase().includes('thinking')) score += 10;
+          // Extended thinking detection (better than name-based)
+          if (this.hasExtendedThinking(model)) {
+            score += 12;
+          } else if (model.name?.toLowerCase().includes('thinking') || 
+                     model.id?.toLowerCase().includes('thinking')) {
+            // Fallback to name-based detection
+            score += 10;
+          }
           break;
+
         case "large_context":
-          if (model.limit?.context >= 200000) score += 8;
+          // Graduated scoring for large context
+          if (context >= 500000) score += 12;      // 500K+
+          else if (context >= 200000) score += 8;  // 200K+
+          else if (context >= 128000) score += 4;  // 128K+
           break;
+
         case "multimodal":
-          if (caps.input?.image || caps.input?.pdf) score += 15;
+          // Full multimodal (image + pdf) gets more points
+          const hasImage = caps.input?.image;
+          const hasPdf = caps.input?.pdf;
+          const hasVideo = caps.input?.video;
+          if (hasImage && hasPdf) score += 15;
+          else if (hasImage || hasPdf) score += 10;
+          if (hasVideo) score += 3; // Bonus for video
           break;
+
         case "image_input":
           if (caps.input?.image) score += 12;
           break;
+
         case "pdf_input":
           if (caps.input?.pdf) score += 8;
           break;
+
         case "fast":
-          if (model.name?.toLowerCase().includes('flash') || 
-              model.name?.toLowerCase().includes('fast')) score += 8;
+          // Use cost as proxy for speed (lower cost = faster/cheaper model)
+          // Also check name patterns
+          if (this.isFastModel(model)) score += 10;
           break;
+
         case "text_output":
           if (caps.output?.text) score += 5;
           break;
@@ -440,6 +747,49 @@ class AgentConfigTool {
     }
 
     return score;
+  }
+
+  /**
+   * Check if model has extended thinking capability.
+   * Extended thinking is indicated by interleaved being an object with a field property.
+   */
+  hasExtendedThinking(model) {
+    const interleaved = model.capabilities?.interleaved;
+    // If interleaved is an object with a field property, it's extended thinking
+    if (interleaved && typeof interleaved === 'object' && interleaved.field) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if model is a "fast" model (optimized for speed/cost).
+   * Uses multiple heuristics: name patterns, cost, family.
+   */
+  isFastModel(model) {
+    // Name-based patterns
+    const name = (model.name || '').toLowerCase();
+    const id = (model.id || '').toLowerCase();
+    const family = (model.family || '').toLowerCase();
+    
+    const fastPatterns = ['flash', 'fast', 'mini', 'lite', 'haiku', 'instant'];
+    for (const pattern of fastPatterns) {
+      if (name.includes(pattern) || id.includes(pattern) || family.includes(pattern)) {
+        return true;
+      }
+    }
+
+    // Cost-based heuristic: if cost is very low, it's likely fast
+    const cost = model.cost;
+    if (cost) {
+      const totalCost = (cost.input || 0) + (cost.output || 0);
+      // Models with total cost < 5 are typically fast/cheap
+      if (totalCost < 5 && totalCost > 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   getRecommendedModels(agentType, limit = 5) {
@@ -465,6 +815,13 @@ class AgentConfigTool {
       return backupFile;
     } catch (error) {
       console.error(`Error creating backup: ${error.message}`);
+      console.error(`\nBackup path: ${backupFile}`);
+      if (error.code === 'EACCES') {
+        console.error('Permission denied. Check directory permissions:');
+        console.error(`  ls -la ${BACKUP_DIR}`);
+      } else if (error.code === 'ENOSPC') {
+        console.error('Disk full. Free up space and try again.');
+      }
       throw error;
     }
   }
@@ -487,6 +844,9 @@ class AgentConfigTool {
       console.log('✓ Configuration saved successfully\n');
     } catch (error) {
       console.error(`Error saving config: ${error.message}`);
+      console.error('\nYour changes may not have been saved.');
+      console.error('The previous config should still be intact.');
+      console.error(`\nTo recover, check backups: ls ${BACKUP_DIR}`);
       throw error;
     }
   }
@@ -501,13 +861,16 @@ class AgentConfigTool {
     }
   }
 
-  formatModel(model) {
+  formatModel(model, showScore = false, score = 0) {
     const ctx = model.limit?.context ? `${Math.floor(model.limit.context / 1000)}K` : '?';
     const caps = [];
     
-    if (model.capabilities?.reasoning) caps.push('R');
+    // Capability indicators
+    if (model.capabilities?.reasoning || this.hasExtendedThinking(model)) caps.push('R');
+    if (this.hasExtendedThinking(model)) caps.push('T');  // Extended Thinking
     if (model.capabilities?.input?.image) caps.push('I');
     if (model.capabilities?.input?.pdf) caps.push('P');
+    if (this.isFastModel(model)) caps.push('F');  // Fast/cheap model
     
     const capsStr = caps.length > 0 ? `[${caps.join('')}]` : '';
     
@@ -515,7 +878,10 @@ class AgentConfigTool {
     const provider = model.providerID || model.id.split('/')[0];
     const providerStr = `${colors.cyan}${provider}${colors.reset}`;
     
-    return `${model.name || model.id} (${ctx}${capsStr}) ${providerStr}`;
+    // Score display for recommendations
+    const scoreStr = showScore && score > 0 ? ` ${colors.dim}(score: ${score})${colors.reset}` : '';
+    
+    return `${model.name || model.id} (${ctx}${capsStr}) ${providerStr}${scoreStr}`;
   }
 
   async prompt(question) {
@@ -532,6 +898,9 @@ class AgentConfigTool {
     console.log(`Select Model for: ${agentType}`);
     console.log(`Description: ${profile?.description || 'Custom agent'}`);
     console.log(`Current: ${currentModel}`);
+    if (profile) {
+      console.log(`Prefers: ${profile.preferred.join(', ')} | Min context: ${Math.floor(profile.minContext / 1000)}K`);
+    }
     console.log(`${'='.repeat(70)}\n`);
 
     const recommended = this.getRecommendedModels(agentType, 8);
@@ -539,9 +908,10 @@ class AgentConfigTool {
     console.log('RECOMMENDED MODELS:\n');
     recommended.forEach((model, idx) => {
       const current = model.id === currentModel ? ' ⭐ (current)' : '';
-      console.log(`  ${idx + 1}. ${this.formatModel(model)}${current}`);
+      console.log(`  ${idx + 1}. ${this.formatModel(model, true, model.score)}${current}`);
     });
 
+    console.log(`\n${colors.dim}Capabilities: [R]=Reasoning [T]=Thinking [I]=Image [P]=PDF [F]=Fast${colors.reset}`);
     console.log('\n[S] Search all models');
     console.log('[F] Filter by provider');
     console.log('[C] Cancel\n');
@@ -560,8 +930,8 @@ class AgentConfigTool {
       return await this.filterByProvider(agentType, currentModel);
     }
 
-    const idx = parseInt(choice) - 1;
-    if (idx >= 0 && idx < recommended.length) {
+    const idx = parseInt(choice, 10) - 1;
+    if (!isNaN(idx) && idx >= 0 && idx < recommended.length) {
       return recommended[idx].id;
     }
 
@@ -612,7 +982,7 @@ class AgentConfigTool {
     if (choice.toLowerCase() === 'a') {
       selectedProviders = this.providers;
     } else {
-      const indices = choice.split(',').map(s => parseInt(s.trim()) - 1);
+      const indices = choice.split(',').map(s => parseInt(s.trim(), 10) - 1).filter(n => !isNaN(n));
       selectedProviders = indices
         .filter(idx => idx >= 0 && idx < this.providers.length)
         .map(idx => this.providers[idx]);
@@ -663,8 +1033,8 @@ class AgentConfigTool {
         continue;
       }
 
-      const idx = parseInt(choice) - 1;
-      if (idx >= 0 && idx < filtered.length) {
+      const idx = parseInt(choice, 10) - 1;
+      if (!isNaN(idx) && idx >= 0 && idx < filtered.length) {
         return filtered[idx].id;
       }
     }
@@ -675,6 +1045,20 @@ class AgentConfigTool {
     const newModel = await this.selectModel(agentName, currentModel);
 
     if (newModel && newModel !== currentModel) {
+      // Confirm model change
+      console.log(`\nChange ${agentName} model:`);
+      console.log(`  From: ${currentModel}`);
+      console.log(`  To:   ${newModel}\n`);
+      const confirm = await this.prompt('Confirm change? (yes/no): ');
+      
+      if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+        console.log('Change cancelled');
+        if (!fromMenu) {
+          await this.prompt('Press Enter to continue...');
+        }
+        return false;
+      }
+      
       if (!this.config.agents[agentName]) {
         this.config.agents[agentName] = {};
       }
@@ -690,32 +1074,26 @@ class AgentConfigTool {
     return newModel !== null;
   }
 
-  async addAgent(fromMenu = false) {
+  async showAgentInfo() {
     console.clear();
-    console.log('\n--- Add New Agent ---\n');
+    console.log('\n' + '='.repeat(70));
+    console.log('Oh My Opencode Built-in Agents');
+    console.log('='.repeat(70) + '\n');
     
-    const name = await this.prompt('Agent name: ');
-    if (!name) return false;
-
-    if (this.config.agents[name]) {
-      console.log('Agent already exists');
-      await this.prompt('Press Enter to continue...');
-      return false;
-    }
-
-    const model = await this.selectModel(name, null);
-    if (model) {
-      this.config.agents[name] = { model };
-      this.saveConfig();
-      console.log(`✓ Added agent ${name} with model ${model}`);
-      
-      // Only prompt to continue if not from agent config menu
-      if (!fromMenu) {
-        await this.prompt('Press Enter to continue...');
-      }
-      return true;
-    }
-    return false;
+    console.log('This tool manages model assignments for Oh My Opencode\'s curated agents.\n');
+    console.log('AVAILABLE AGENTS:\n');
+    
+    Object.entries(AGENT_PROFILES).forEach(([name, profile]) => {
+      console.log(`${colors.cyan}${name}${colors.reset}`);
+      console.log(`  ${profile.description}`);
+      console.log(`  Preferred: ${profile.preferred.join(', ')}`);
+      console.log(`  Min context: ${profile.minContext.toLocaleString()} tokens\n`);
+    });
+    
+    console.log('Note: To create custom agents with system prompts, see:');
+    console.log('      docs/CUSTOM-AGENTS.md\n');
+    
+    await this.prompt('Press Enter to continue...');
   }
 
   async deleteAgent(agentName, fromMenu = false) {
@@ -768,12 +1146,13 @@ class AgentConfigTool {
 
       console.log('ACTIONS:\n');
       console.log('  [S] Switch active configuration');
-      console.log('  [C] Create new configuration');
+      console.log('  [N] New configuration');
       console.log('  [R] Rename configuration');
+      console.log('  [T] Edit description');
       console.log('  [D] Delete configuration');
       console.log('  [E] Export configuration');
       console.log('  [I] Import configuration');
-      console.log('  [X] Return to main menu\n');
+      console.log('  [B] Back to main menu\n');
 
       const choice = await this.prompt('Select option: ');
 
@@ -781,11 +1160,14 @@ class AgentConfigTool {
         case 's':
           await this.switchConfiguration();
           break;
-        case 'c':
+        case 'n':
           await this.createConfiguration();
           break;
         case 'r':
           await this.renameConfiguration();
+          break;
+        case 't':
+          await this.editDescription();
           break;
         case 'd':
           await this.deleteConfiguration();
@@ -796,7 +1178,7 @@ class AgentConfigTool {
         case 'i':
           await this.importConfiguration();
           break;
-        case 'x':
+        case 'b':
           return;
         default:
           console.log('Invalid option');
@@ -820,8 +1202,8 @@ class AgentConfigTool {
 
     if (choice.toLowerCase() === 'c') return;
 
-    const idx = parseInt(choice) - 1;
-    if (idx >= 0 && idx < configs.length) {
+    const idx = parseInt(choice, 10) - 1;
+    if (!isNaN(idx) && idx >= 0 && idx < configs.length) {
       const configName = configs[idx];
       if (configName === this.configName) {
         console.log('Already active');
@@ -891,7 +1273,7 @@ class AgentConfigTool {
         
         if (copyChoice.toLowerCase() === 'c') return;
         
-        const copyIdx = parseInt(copyChoice) - 1;
+        const copyIdx = parseInt(copyChoice, 10) - 1;
         if (copyIdx < 0 || copyIdx >= configs.length) {
           console.log('Invalid selection');
           await this.prompt('Press Enter to continue...');
@@ -969,8 +1351,8 @@ class AgentConfigTool {
 
     if (choice.toLowerCase() === 'c') return;
 
-    const idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= configs.length) {
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= configs.length) {
       console.log('Invalid selection');
       await this.prompt('Press Enter to continue...');
       return;
@@ -991,6 +1373,57 @@ class AgentConfigTool {
       }
       
       console.log(`\n✓ Renamed "${oldName}" to "${newName}"`);
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+    }
+
+    await this.prompt('Press Enter to continue...');
+  }
+
+  async editDescription() {
+    console.clear();
+    console.log('\n--- Edit Configuration Description ---\n');
+
+    const configs = this.configManager.listConfigurations();
+    configs.forEach((name, idx) => {
+      const metadata = this.configManager.loadConfiguration(name);
+      console.log(`  ${idx + 1}. ${name}`);
+      console.log(`     Current: ${metadata.description}\n`);
+    });
+
+    console.log('[C] Cancel\n');
+    const choice = await this.prompt('Select configuration to edit: ');
+
+    if (choice.toLowerCase() === 'c') return;
+
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= configs.length) {
+      console.log('Invalid selection');
+      await this.prompt('Press Enter to continue...');
+      return;
+    }
+
+    const configName = configs[idx];
+    const metadata = this.configManager.loadConfiguration(configName);
+    
+    console.log(`\nCurrent description: ${metadata.description}`);
+    const newDescription = await this.prompt('New description (or Enter to keep current): ');
+
+    if (!newDescription) {
+      console.log('No changes made');
+      await this.prompt('Press Enter to continue...');
+      return;
+    }
+
+    try {
+      // Save with new description
+      this.configManager.saveConfiguration(configName, newDescription, metadata.config);
+      console.log(`\n✓ Updated description for "${configName}"`);
+      
+      // Update local metadata if this is the active config
+      if (configName === this.configName) {
+        this.configMetadata.description = newDescription;
+      }
     } catch (error) {
       console.error(`Error: ${error.message}`);
     }
@@ -1020,8 +1453,8 @@ class AgentConfigTool {
 
     if (choice.toLowerCase() === 'c') return;
 
-    const idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= configs.length) {
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= configs.length) {
       console.log('Invalid selection');
       await this.prompt('Press Enter to continue...');
       return;
@@ -1062,8 +1495,8 @@ class AgentConfigTool {
 
     if (choice.toLowerCase() === 'c') return;
 
-    const idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= configs.length) {
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= configs.length) {
       console.log('Invalid selection');
       await this.prompt('Press Enter to continue...');
       return;
@@ -1108,7 +1541,14 @@ class AgentConfigTool {
       this.configManager.importConfiguration(expandedPath, name, description);
       console.log(`\n✓ Imported configuration as "${name}"`);
     } catch (error) {
-      console.error(`Error: ${error.message}`);
+      console.error(`\nError importing configuration: ${error.message}`);
+      if (error.code === 'ENOENT') {
+        console.error(`File not found: ${sourcePath}`);
+        console.error('Check the file path and try again.');
+      } else if (error instanceof SyntaxError) {
+        console.error('The file contains invalid JSON.');
+        console.error('Ensure the file is a valid JSON configuration.');
+      }
     }
 
     await this.prompt('Press Enter to continue...');
@@ -1132,9 +1572,9 @@ class AgentConfigTool {
       
       console.log('\nOPTIONS:\n');
       console.log('  [E] Edit agent model (enter number or name)');
-      console.log('  [A] Add new agent');
       console.log('  [D] Delete agent (enter number or name)');
-      console.log('  [X] Return to main menu');
+      console.log('  [?] Show agent information');
+      console.log('  [B] Back to main menu');
       
       console.log('\nCapabilities: [R]=Reasoning [I]=Image [P]=PDF\n');
       
@@ -1144,7 +1584,7 @@ class AgentConfigTool {
         case 'e': {
           const agentInput = await this.prompt('Agent # or name: ');
           
-          const agentIdx = parseInt(agentInput) - 1;
+          const agentIdx = parseInt(agentInput, 10) - 1;
           let agentName = null;
           
           if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
@@ -1161,13 +1601,10 @@ class AgentConfigTool {
           }
           break;
         }
-        case 'a':
-          await this.addAgent(true);  // fromMenu = true
-          break;
         case 'd': {
           const agentInput = await this.prompt('Agent # or name: ');
           
-          const agentIdx = parseInt(agentInput) - 1;
+          const agentIdx = parseInt(agentInput, 10) - 1;
           let agentName = null;
           
           if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
@@ -1184,7 +1621,10 @@ class AgentConfigTool {
           }
           break;
         }
-        case 'x':
+        case '?':
+          await this.showAgentInfo();
+          break;
+        case 'b':
           return;
         default:
           console.log('Invalid option');
@@ -1214,16 +1654,16 @@ class AgentConfigTool {
       console.log(`  ${idx + 1}. ${provider} (${count} models)${preferred}`);
     });
 
-    console.log('\n[C] Clear preferences');
-    console.log('[X] Cancel\n');
+    console.log('\n[X] Clear preferences');
+    console.log('[B] Back\n');
     
     const choice = await this.prompt('Select providers (comma-separated numbers) or action: ');
     
-    if (choice.toLowerCase() === 'x') {
+    if (choice.toLowerCase() === 'b') {
       return;
     }
 
-    if (choice.toLowerCase() === 'c') {
+    if (choice.toLowerCase() === 'x') {
       delete this.config.preferred_providers;
       this.saveConfig();
       console.log('✓ Cleared preferred providers');
@@ -1231,7 +1671,7 @@ class AgentConfigTool {
       return;
     }
 
-    const indices = choice.split(',').map(s => parseInt(s.trim()) - 1);
+    const indices = choice.split(',').map(s => parseInt(s.trim(), 10) - 1).filter(n => !isNaN(n));
     const selectedProviders = indices
       .filter(idx => idx >= 0 && idx < this.providers.length)
       .map(idx => this.providers[idx]);
@@ -1274,25 +1714,27 @@ class AgentConfigTool {
 
       console.log('\nACTIONS:\n');
       console.log('  [E] Edit agent model (enter number or name)');
-      console.log('  [A] Add new agent');
       console.log('  [D] Delete agent (enter number or name)');
+      console.log('  [?] Show agent information');
       console.log('  [P] Set preferred providers');
+      console.log('  [U] Update config (sync with OmO defaults)');
       console.log('  [M] Manage configurations');
       console.log('  [R] Restore defaults');
       console.log('  [B] View backups');
       console.log('  [Q] Quit');
       
       // Capability legend
-      console.log('\nCapabilities: [R]=Reasoning [I]=Image [P]=PDF\n');
-
+      console.log('\nCapabilities: [R]=Reasoning [T]=Thinking [I]=Image [P]=PDF [F]=Fast');
+      console.log('Managing OmO built-in agents only (see [?] for custom agents)\n');
+      
       const choice = await this.prompt('Select option: ');
-
+      
       switch (choice.toLowerCase()) {
         case 'e': {
           const agentInput = await this.prompt('Agent # or name: ');
           
           // Check if it's a number
-          const agentIdx = parseInt(agentInput) - 1;
+          const agentIdx = parseInt(agentInput, 10) - 1;
           let agentName = null;
           
           if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
@@ -1309,14 +1751,11 @@ class AgentConfigTool {
           }
           break;
         }
-        case 'a':
-          await this.addAgent();
-          break;
         case 'd': {
           const agentInput = await this.prompt('Agent # or name: ');
           
           // Check if it's a number
-          const agentIdx = parseInt(agentInput) - 1;
+          const agentIdx = parseInt(agentInput, 10) - 1;
           let agentName = null;
           
           if (!isNaN(agentIdx) && agentIdx >= 0 && agentIdx < agents.length) {
@@ -1333,8 +1772,14 @@ class AgentConfigTool {
           }
           break;
         }
+        case '?':
+          await this.showAgentInfo();
+          break;
         case 'p':
           await this.setPreferredProviders();
+          break;
+        case 'u':
+          await this.promptConfigSync();
           break;
         case 'm':
           await this.manageConfigurationsMenu();
@@ -1449,8 +1894,8 @@ class AgentConfigTool {
     
     if (choice.toLowerCase() === 'c') return;
     
-    const idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= files.length) {
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= files.length) {
       console.log('Invalid selection');
       await this.prompt('Press Enter to continue...');
       return;
@@ -1520,6 +1965,10 @@ class AgentConfigTool {
     
     await this.loadConfig();
     await this.loadModels();
+    
+    // Check for missing agents/MCPs and offer to sync
+    await this.promptConfigSync();
+    
     await this.mainMenu();
   }
 
