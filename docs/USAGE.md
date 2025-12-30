@@ -54,7 +54,6 @@ CURRENT AGENTS:
 ACTIONS:
 
   [E] Edit agent model
-  [A] Add new agent
   [D] Delete agent
   [R] Restore defaults
   [B] View backups
@@ -75,15 +74,8 @@ The tool automatically creates a backup before saving.
 
 ### Add a New Agent
 
-1. Press `A` from the main menu
-2. Enter a unique name for your agent
-3. Select a model (recommendations will be based on generic criteria)
-4. The agent is created and saved
-
-Example agent names:
-- `code-reviewer` - For code review tasks
-- `test-generator` - For generating tests
-- `documentation-expert` - For documentation work
+This tool manages **Oh My OpenCode's built-in agents** and focuses on model assignment.
+Custom agent creation is not supported here.
 
 ### Delete an Agent
 

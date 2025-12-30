@@ -19,25 +19,25 @@ chmod +x ~/.config/opencode/bin/opencode-agent-config
 
 **Solution 1** - Add to PATH:
 ```bash
-echo 'export PATH="$HOME/.config/opencode/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
 **Solution 2** - Run with full path:
 ```bash
-~/.config/opencode/bin/opencode-agent-config
+~/.local/bin/opencode-agent-config
 ```
 
 ## Runtime Issues
 
 ### Can't load models
 
-**Problem**: Error message "Error loading models"
+**Problem**: Error message "Error loading models" (or OpenCode fails when running `opencode models --verbose`)
 
 **Possible causes**:
 1. OpenCode not installed
 2. OpenCode not in PATH
-3. OpenCode configuration issue
+3. OpenCode failed to start due to a configuration/plugin error (common: `ProviderModelNotFoundError`)
 
 **Solutions**:
 
@@ -52,6 +52,26 @@ opencode models
 ```
 
 If OpenCode isn't found, reinstall or add to PATH.
+
+#### ProviderModelNotFoundError
+
+**What it means**: Your config references a model id that OpenCode can't resolve under your current provider/plugin setup.
+This often happens after enabling/disabling a provider, changing auth plugins, or switching configurations.
+
+**How to recover**:
+1. Identify the missing model id from the error output.
+2. Run this tool and re-select valid models for the affected agent(s).
+   - If the model catalog can't load, use manual model-id entry.
+3. If you want to keep that model, re-enable the provider that supplies it (and verify `opencode models` lists it).
+
+**Data to collect when reporting**:
+```bash
+opencode --version
+opencode models --verbose
+```
+And the `agents` section from:
+- `~/.config/opencode/oh-my-opencode.json`
+- and/or `.opencode/oh-my-opencode.json`
 
 ### Configuration file not found
 
@@ -221,6 +241,27 @@ Or use the tool's restore defaults:
 1. Run the tool
 2. Press `R`
 3. Confirm with `yes`
+
+### Migrating MCP secrets into files
+
+If you want a one-directory backup, you can migrate inline secrets into `~/.config/opencode/secrets/*` and replace them with `{file:...}` placeholders.
+
+- For OpenCode MCP servers (`~/.config/opencode/opencode.json`): main menu → **[Z] Migrate OpenCode MCP secrets to files**
+- For Oh My OpenCode MCP URLs (`~/.config/opencode/oh-my-opencode.json` or project `.opencode/oh-my-opencode.json`): main menu → **[V] Migrate OmO MCP URL secrets to files**
+
+### Exa MCP not working
+
+**Problem**: `websearch_exa` MCP fails to connect / returns auth errors
+
+**Cause**: Missing Exa API key.
+
+**Solution**: Set your key in the environment where you run OpenCode:
+
+```bash
+export EXA_API_KEY="..."
+```
+
+This tool writes the Exa MCP URL using `{env:EXA_API_KEY}` so configs stay portable.
 
 ### MCP configuration lost
 

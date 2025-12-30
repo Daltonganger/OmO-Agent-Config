@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-12-30
+
+### Added
+- Project scope support via `.opencode/oh-my-opencode.json` (git root) with clear scope/repo/path display
+- Project opt-in prompt (interactive only) with per-repo "don't ask again" cache
+- Copy a saved profile into a project config
+- Save current global/project config back into a named profile
+- Startup check for latest Oh My OpenCode schema release (cached under `~/.config/opencode/cache/`)
+- Provider preference policies by model family prefix (e.g. `claude-`, `gpt-`, `grok-`) and an interactive editor
+- MCP portability tooling:
+  - Exa key helper
+  - Migrate OpenCode `opencode.json` MCP `environment` secrets into `~/.config/opencode/secrets/*` with `{file:...}` placeholders
+  - Migrate Oh My OpenCode MCP URL query secrets into `~/.config/opencode/secrets/*` with `{file:...}` placeholders
+  - Secrets report (inline vs env vs file + missing/orphan secret files)
+
+### Changed
+- Installer now links command into `~/.local/bin` and ensures PATH points there
+- Tool can continue when model catalog fails to load (manual model-id entry fallback)
+
+### Fixed
+- ProviderModelNotFoundError due to bare model ids: normalize agent model ids to fully-qualified `provider/model`
+- Model catalog parsing bug where JSON `id` overwrote the qualified `provider/model` id
+- Snapshot profile creation on schema update now uses valid config names (no dots)
+- Repo-root `./opencode-agent-config` now forwards to `./bin/opencode-agent-config` to avoid running legacy script
+
 ## [0.4.0] - 2025-12-29
 
 ### Added

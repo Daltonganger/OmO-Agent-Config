@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2025-12-29
-**Commit:** 2e42604
+**Generated:** 2025-12-30
+**Commit:** 9c875b9
 **Branch:** main
 
 ## OVERVIEW
@@ -63,6 +63,8 @@ OmO-Agent-Config/
 │   ├── omo-default.json
 │   └── user-config.json
 ├── backups/                 # Timestamped backups
+├── cache/                   # Cached upstream schema (Oh My OpenCode)
+├── secrets/                 # Local secret files for {file:...} placeholders
 └── bin/                     # Installed tool
     ├── opencode-agent-config
     └── lib/                 # Copied lib/ directory
@@ -85,7 +87,7 @@ OmO-Agent-Config/
 ## UNIQUE STYLES
 
 - **Source-as-binary**: JS file with shebang, distributed as executable
-- **Shell-based installation**: No npm/brew, uses `install.sh` + PATH modification
+- **Shell-based installation**: No npm/brew; `install.sh` copies into `~/.config/opencode/` and links into `~/.local/bin`
 - **Metadata wrapping**: Configs stored with `{ name, description, created, modified, config }` envelope
 - **Provider preference scoring**: `preferred_providers` array boosts model scores
 
@@ -107,8 +109,11 @@ opencode-agent-config -h                # Help
 
 ## NOTES
 
-- **Model loading**: Runs `opencode models --verbose 2>/dev/null`, parses nested JSON with brace counting
-- **7 built-in agents**: oracle, Sisyphus, librarian, explore, frontend-ui-ux-engineer, document-writer, multimodal-looker
+- **Model loading**: Runs `opencode models --verbose`, parses nested JSON with brace counting; surfaces stderr on failure
+- **Global vs project scope**: edits global `~/.config/opencode/oh-my-opencode.json` or project `.opencode/oh-my-opencode.json` (git root)
+- **Upstream sync**: fetches Oh My OpenCode schema at startup (latest release tag) into `~/.config/opencode/cache/`
+- **Secrets portability**: supports `{env:...}` and `{file:...}` placeholders; can migrate MCP secrets into `~/.config/opencode/secrets/`
+- **Built-in agents managed**: oracle, Sisyphus, librarian, explore, frontend-ui-ux-engineer, document-writer, multimodal-looker
 - **First-run migration**: Auto-creates `omo-default` and migrates existing config to `user-config`
 - **Backup before every save**: Creates timestamped backup in `~/.config/opencode/backups/`
 - **No tests**: Manual testing only, no automated test suite

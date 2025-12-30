@@ -1,6 +1,6 @@
 # OmO Agent Config
 
-> Interactive CLI tool for managing [Oh My Opencode](https://github.com/opencode-ai/oh-my-opencode) agent model assignments
+> Interactive CLI tool for managing [Oh My OpenCode (Oh My Opencode)](https://github.com/code-yeongyu/oh-my-opencode) agent model assignments
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
@@ -41,18 +41,24 @@ cd OmO-Agent-Config
 The installer will:
 1. Copy the tool to `~/.config/opencode/bin/`
 2. Make it executable
-3. Add it to your PATH (in `~/.zshrc` or `~/.bashrc`)
-4. Create the backup directory
+3. Link it into `~/.local/bin/` (so it can be run from anywhere)
+4. Ensure `~/.local/bin` is on your PATH (in your shell rc file)
+5. Create the backup directory
 
 ### Manual Installation
 
 ```bash
 # Copy the tool
-cp opencode-agent-config ~/.config/opencode/bin/
+mkdir -p ~/.config/opencode/bin
+cp bin/opencode-agent-config ~/.config/opencode/bin/
 chmod +x ~/.config/opencode/bin/opencode-agent-config
 
-# Add to PATH (add to your shell rc file)
-export PATH="$HOME/.config/opencode/bin:$PATH"
+# Link into a common user bin dir
+mkdir -p ~/.local/bin
+ln -sf ~/.config/opencode/bin/opencode-agent-config ~/.local/bin/opencode-agent-config
+
+# Ensure ~/.local/bin is on PATH (add to your shell rc file)
+export PATH="$HOME/.local/bin:$PATH"
 
 # Create backup directory
 mkdir -p ~/.config/opencode/backups
@@ -87,11 +93,14 @@ opencode-agent-config --help
 
 ### Main Menu
 
+Global scope example:
+
 ```
 ======================================================================
 Oh My Opencode - Agent Configuration
 ======================================================================
 
+Scope: Global
 Active Configuration: work-config
 Description: Work setup
 Modified: 12/23/2025
@@ -174,11 +183,36 @@ Example:
 3. GPT-5.2 (200K[R])
 ```
 
+## Project Mode (per-repo config)
+
+If you run the tool inside a Git repository and a project config exists at:
+
+```
+<repo-root>/.opencode/oh-my-opencode.json
+```
+
+the tool will open it in **Project scope** and show:
+- Repo name
+- Repo root path
+- The exact config file being edited
+
+To create a project config from one of your saved global configurations:
+- Main menu → **[M] Manage configurations** → **[C] Copy configuration into this project**
+
+Note: `.opencode/oh-my-opencode.jsonc` has higher priority in Oh My OpenCode. This tool currently edits project configs only in `.json`.
+
 ## Configuration Files
 
 ### Tool Location
+
+Primary install path:
 ```
 ~/.config/opencode/bin/opencode-agent-config
+```
+
+Convenience link (recommended in PATH):
+```
+~/.local/bin/opencode-agent-config
 ```
 
 ### Configuration File
@@ -194,6 +228,26 @@ This is the file Oh My Opencode reads for agent configuration.
 ```
 
 Backups are automatically created before every configuration change.
+
+## API Keys / Portability
+
+This repo does **not** ship API keys.
+
+If you enable the Exa MCP (`websearch_exa`), you have two portable options:
+
+1) Environment variable:
+```bash
+export EXA_API_KEY="..."
+```
+
+2) File-based secret (recommended if you want to back up a single directory):
+```
+~/.config/opencode/secrets/exa_api_key
+```
+
+This tool can set either placeholder in the MCP URL (`{env:EXA_API_KEY}` or `{file:...}`), depending on your preference.
+
+For OpenCode MCP servers defined in `~/.config/opencode/opencode.json`, this tool also supports migrating inline `mcp.*.environment` secrets into `~/.config/opencode/secrets/*` and replacing them with `{file:...}` placeholders (one-dir backup friendly).
 
 ## Default Agent Configuration
 
@@ -244,8 +298,13 @@ opencode models
 
 Add to your PATH manually:
 ```bash
-echo 'export PATH="$HOME/.config/opencode/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
+```
+
+Or run directly:
+```bash
+~/.local/bin/opencode-agent-config
 ```
 
 ### Restore a backup manually
