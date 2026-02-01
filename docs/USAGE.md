@@ -45,7 +45,7 @@ Oh My Opencode - Agent Configuration
 CURRENT AGENTS:
 
   1. oracle                    → opencode/gpt-5.2
-  2. Sisyphus                  → google/claude-opus-4-5-thinking
+  2. sisyphus                  → google/claude-opus-4-5-thinking
   3. librarian                 → google/claude-sonnet-4-5
   4. frontend-ui-ux-engineer   → google/gemini-3-pro-high
   5. document-writer           → google/gemini-3-flash
@@ -173,7 +173,7 @@ cp ~/.config/opencode/backups/oh-my-opencode-2025-12-24-123045.json \
 Press `R` from the main menu to restore all agents to defaults:
 
 - oracle → opencode/gpt-5.2
-- Sisyphus → google/claude-opus-4-5-thinking
+- sisyphus → google/claude-opus-4-5-thinking
 - librarian → google/claude-sonnet-4-5
 - frontend-ui-ux-engineer → google/gemini-3-pro-high
 - document-writer → google/gemini-3-flash
@@ -192,7 +192,7 @@ The tool has built-in profiles for common agent types:
 - **Recommended**: High reasoning capability, large context window (128K+)
 - **Best for**: Architecture decisions, complex refactoring, strategic planning
 
-#### Sisyphus
+#### sisyphus
 - **Purpose**: Extended thinking for multi-step tasks
 - **Recommended**: Thinking models, reasoning, large context
 - **Best for**: Complex implementations, debugging difficult issues
