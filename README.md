@@ -108,7 +108,7 @@ Modified: 12/23/2025
 CURRENT AGENTS:
 
   1. oracle                    → opencode/gpt-5.2
-  2. Sisyphus                  → google/claude-opus-4-5-thinking
+  2. sisyphus                  → google/claude-opus-4-5-thinking
   3. librarian                 → google/claude-sonnet-4-5
   4. frontend-ui-ux-engineer   → google/gemini-3-pro-high
   5. document-writer           → google/gemini-3-flash
@@ -161,7 +161,7 @@ The tool includes intelligent recommendations for different agent types:
 | Agent | Purpose | Recommended Capabilities |
 |-------|---------|-------------------------|
 | **oracle** | Strategic reasoning & complex problem solving | Reasoning, Large context (128K+) |
-| **Sisyphus** | Extended thinking for multi-step tasks | Reasoning, Thinking models, Large context |
+| **sisyphus** | Extended thinking for multi-step tasks | Reasoning, Thinking models, Large context |
 | **librarian** | Research & knowledge retrieval | Large context, Fast performance |
 | **frontend-ui-ux-engineer** | UI/UX with visual understanding | Multimodal, Image input |
 | **document-writer** | Fast text generation | Speed, Text output |
@@ -259,7 +259,7 @@ The tool includes these defaults for easy restoration:
     "oracle": {
       "model": "opencode/gpt-5.2"
     },
-    "Sisyphus": {
+    "sisyphus": {
       "model": "google/claude-opus-4-5-thinking"
     },
     "librarian": {

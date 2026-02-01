@@ -121,7 +121,7 @@ oracle
   Preferred: reasoning, large_context
   Min context: 128,000 tokens
 
-Sisyphus
+sisyphus
   Extended thinking for complex multi-step tasks
   Preferred: reasoning, thinking, large_context
   Min context: 128,000 tokens
@@ -149,7 +149,7 @@ No action required for most users. If you added custom agents in v0.3.0:
 1. Check your agents: `opencode-agent-config`
 2. Delete any agents that aren't OmO defaults:
    - oracle
-   - Sisyphus
+   - sisyphus
    - librarian
    - frontend-ui-ux-engineer
    - document-writer
@@ -176,7 +176,7 @@ The 6 agents managed by this tool:
 | Agent | Purpose | Capabilities |
 |-------|---------|-------------|
 | **oracle** | Strategic reasoning & problem solving | Reasoning, large context (128K+) |
-| **Sisyphus** | Extended thinking for multi-step tasks | Reasoning, thinking, large context |
+| **sisyphus** | Extended thinking for multi-step tasks | Reasoning, thinking, large context |
 | **librarian** | Research & knowledge retrieval | Large context, fast |
 | **frontend-ui-ux-engineer** | UI/UX with visual understanding | Multimodal, image input |
 | **document-writer** | Fast text generation | Speed, text output |

@@ -70,7 +70,7 @@ node opencode-agent-config
 
 **DEFAULTS** (lines 19-52)
 - Contains default agent configurations and MCP settings
-- Includes 6 predefined agents: oracle, Sisyphus, librarian, frontend-ui-ux-engineer, document-writer, multimodal-looker
+- Includes 6 predefined agents: oracle, sisyphus, librarian, frontend-ui-ux-engineer, document-writer, multimodal-looker
 - Used for restore functionality
 
 **Models Array**

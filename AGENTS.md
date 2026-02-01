@@ -113,7 +113,7 @@ opencode-agent-config -h                # Help
 - **Global vs project scope**: edits global `~/.config/opencode/oh-my-opencode.json` or project `.opencode/oh-my-opencode.json` (git root)
 - **Upstream sync**: fetches Oh My OpenCode schema at startup (latest release tag) into `~/.config/opencode/cache/`
 - **Secrets portability**: supports `{env:...}` and `{file:...}` placeholders; can migrate MCP secrets into `~/.config/opencode/secrets/`
-- **Built-in agents managed**: oracle, Sisyphus, librarian, explore, frontend-ui-ux-engineer, document-writer, multimodal-looker
+- **Built-in agents managed**: oracle, sisyphus, librarian, explore, frontend-ui-ux-engineer, document-writer, multimodal-looker
 - **First-run migration**: Auto-creates `omo-default` and migrates existing config to `user-config`
 - **Backup before every save**: Creates timestamped backup in `~/.config/opencode/backups/`
 - **No tests**: Manual testing only, no automated test suite
