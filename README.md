@@ -208,15 +208,15 @@ Each model receives a score (0-100+) based on:
 | **fast** | +10 | Quick, cost-effective tasks |
 | **deep_work** | +15 | Autonomous deep work (hephaestus) |
 
-#### 3. Cost Efficiency (up to +15 points)
+#### 3. Cost Efficiency (up to +10 points)
 The scoring system rewards cost-effective models (cost per 1M tokens):
-- **Free/Included** (cost = 0): +15 points
-- **Extremely Low** (< $0.50): +13 points
-- **Very Low** (< $1): +11 points
-- **Low** (< $1.50): +9 points
-- **Moderate** (< $2): +7 points
-- **Fair** (< $3): +5 points
-- **Standard** (< $4): +3 points
+- **Free/Included** (cost = 0): +10 points
+- **Extremely Low** (< $0.50): +8 points
+- **Very Low** (< $1): +7 points
+- **Low** (< $1.50): +6 points
+- **Moderate** (< $2): +5 points
+- **Fair** (< $3): +3 points
+- **Standard** (< $4): +2 points
 - **Higher** (< $5): +1 point
 - **Above $5**: +0 points
 
