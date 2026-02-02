@@ -209,14 +209,18 @@ Each model receives a score (0-100+) based on:
 | **deep_work** | +15 | Autonomous deep work (hephaestus) |
 
 #### 3. Cost Efficiency (up to +15 points)
-The scoring system rewards cost-effective models:
+The scoring system rewards cost-effective models (cost per 1M tokens):
 - **Free/Included** (cost = 0): +15 points
-- **Very Low** (< $5 per 1M tokens): +12 points
-- **Low** (< $15): +8 points
-- **Medium** (< $30): +4 points
-- **High** (< $60): +2 points
+- **Extremely Low** (< $0.50): +13 points
+- **Very Low** (< $1): +11 points
+- **Low** (< $1.50): +9 points
+- **Moderate** (< $2): +7 points
+- **Fair** (< $3): +5 points
+- **Standard** (< $4): +3 points
+- **Higher** (< $5): +1 point
+- **Above $5**: +0 points
 
-*Subscription models with flat fees receive maximum cost score automatically.*
+*Note: Most models are under $5, so the granular tiers help differentiate cost-effective options. Subscription models with flat fees receive maximum cost score.*
 
 #### 4. Model Recency (up to +5 points)
 Newer models receive bonuses:
@@ -238,13 +242,15 @@ If you set preferred providers in your config:
 
 ### Interpreting Scores
 
-- **80-100+**: Excellent match - ideal for this agent
+Scores range from 0 to 100+ (maximum theoretical: ~140 points):
+
+- **80+**: Excellent match - ideal for this agent
 - **60-79**: Good match - suitable for most tasks
 - **40-59**: Fair match - may work but not optimal
 - **20-39**: Poor match - limited suitability
 - **0-19**: Minimal match - not recommended
 
-*Note: A score of 0 doesn't mean the model won't work - it just means it doesn't match the agent's ideal capabilities.*
+*Note: Scores can exceed 100 when a model excels in multiple areas (e.g., has reasoning, large context, low cost, and recent release). A score of 0 doesn't mean the model won't work - it just means it doesn't match the agent's ideal capabilities.*
 
 ### Customizing Recommendations
 
