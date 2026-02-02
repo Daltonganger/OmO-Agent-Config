@@ -178,10 +178,86 @@ When browsing models, you'll see these capability indicators:
 
 Example:
 ```
-1. Claude Opus 4.5 Thinking (200K[R]) ⭐ (current)
-2. Gemini 3 Pro High (1048K[RIP])
-3. GPT-5.2 (200K[R])
+1. Claude Opus 4.5 Thinking (200K[R]) ⭐ (current) (score: 85)
+2. Gemini 3 Pro High (1048K[RIP]) (score: 72)
+3. GPT-5.2 (200K[R]) (score: 68)
 ```
+
+## Model Scoring System
+
+OmO-Agent-Config uses an intelligent scoring algorithm to rank models for each agent. The score (shown next to recommended models) helps you understand why certain models are suggested.
+
+### How Scoring Works
+
+Each model receives a score (0-100+) based on:
+
+#### 1. Context Window (up to +20 points)
+- **Base**: +10 points if model meets the agent's minimum context requirement
+- **Bonus**: Up to +10 additional points for larger context windows (4x minimum)
+- **Penalty**: Up to -20 points if context is insufficient
+
+#### 2. Capability Matching (up to +15 points each)
+| Capability | Max Points | Best For |
+|------------|-----------|----------|
+| **reasoning** | +15 | Agents that need complex problem solving |
+| **thinking** | +12 | Agents using extended thinking modes |
+| **large_context** | +12 | Agents processing large codebases |
+| **multimodal** | +15 | Agents analyzing images/PDFs |
+| **image_input** | +12 | Visual analysis tasks |
+| **pdf_input** | +8 | Document processing |
+| **fast** | +10 | Quick, cost-effective tasks |
+| **deep_work** | +15 | Autonomous deep work (hephaestus) |
+
+#### 3. Cost Efficiency (up to +10 points)
+The scoring system rewards cost-effective models (cost per 1M tokens):
+- **Free/Included** (cost = 0): +10 points
+- **Extremely Low** (< $0.50): +8 points
+- **Very Low** (< $1): +7 points
+- **Low** (< $1.50): +6 points
+- **Moderate** (< $2): +5 points
+- **Fair** (< $3): +3 points
+- **Standard** (< $4): +2 points
+- **Higher** (< $5): +1 point
+- **Above $5**: +0 points
+
+*Note: Most models are under $5, so the granular tiers help differentiate cost-effective options. Subscription models with flat fees receive maximum cost score.*
+
+#### 4. Model Recency (up to +5 points)
+Newer models receive bonuses:
+- **Recently released** (< 3 months): +5 points
+- **This year** (< 6 months): +3 points
+- **Last year** (< 12 months): +1 point
+
+#### 5. Provider Preferences (up to +15 points)
+If you set preferred providers in your config:
+```json
+{
+  "preferred_providers": ["anthropic", "openai", "google"]
+}
+```
+- 1st preference: +5 points
+- 2nd preference: +4 points
+- 3rd preference: +3 points
+- etc.
+
+### Interpreting Scores
+
+Scores range from 0 to 100+ (maximum theoretical: ~140 points):
+
+- **80+**: Excellent match - ideal for this agent
+- **60-79**: Good match - suitable for most tasks
+- **40-59**: Fair match - may work but not optimal
+- **20-39**: Poor match - limited suitability
+- **0-19**: Minimal match - not recommended
+
+*Note: Scores can exceed 100 when a model excels in multiple areas (e.g., has reasoning, large context, low cost, and recent release). A score of 0 doesn't mean the model won't work - it just means it doesn't match the agent's ideal capabilities.*
+
+### Customizing Recommendations
+
+You can influence recommendations by:
+1. Setting preferred providers (gives them bonus points)
+2. Choosing agents with specific capability requirements
+3. Selecting models with recent release dates for latest features
 
 ## Project Mode (per-repo config)
 

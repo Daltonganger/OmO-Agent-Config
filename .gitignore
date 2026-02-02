@@ -30,3 +30,4 @@ test-config.json
 tmp/
 temp/
 *.tmp
+nohup.out
