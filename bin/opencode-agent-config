@@ -14,8 +14,22 @@ if (fs.existsSync(path.join(localLib, 'ui', 'menus.js'))) {
 }
 
 const { AgentConfigTool } = require(path.join(libPath, 'ui', 'menus'));
+const { migrateAllConfigs } = require(path.join(libPath, 'config-migration'));
 
 const args = process.argv.slice(2);
+
+const skipMigration = args.includes('--validate') || 
+                      args.includes('--resolve') ||
+                      args.includes('-h') ||
+                      args.includes('--help');
+
+if (!skipMigration) {
+  const migrated = migrateAllConfigs();
+  if (migrated) {
+    console.log('');
+  }
+}
+
 const tool = new AgentConfigTool();
 
 if (args.length > 0) {

@@ -11,7 +11,10 @@ OmO Agent Config is a user-friendly command-line tool that simplifies the proces
 ### Key Features
 
 - **Named Configuration Profiles** - Create and switch between multiple agent configurations for different workflows
-- **CLI Quick Switch** - Fast config switching via command line: `opencode-agent-config -s work`
+- **Category-Based Model Selection** - 19 intelligent categories (ultrabrain, visual-engineering, quick, etc.) with automatic model resolution
+- **Five-Tier Model Resolution** - UI Override → User Config → Category Default → Fallback Chain → System Default
+- **Fallback Chain Support** - Automatic provider fallback (anthropic → github-copilot → opencode → zai-coding-plan)
+- **CLI Quick Operations** - Fast config switching, validation, and model resolution via command line
 - **Smart Model Recommendations** - Intelligent model suggestions based on agent type and capabilities
 - **Automatic Backups** - Every configuration change creates a timestamped backup
 - **Extensive Model Catalog** - Browse 200+ models from OpenCode, Google, Anthropic, xAI, OpenRouter
@@ -85,6 +88,13 @@ opencode-agent-config --list
 # Show current active configuration
 opencode-agent-config -c
 opencode-agent-config --current
+
+# Validate configuration
+opencode-agent-config --validate
+
+# Resolve model for agent/category
+opencode-agent-config --resolve oracle
+opencode-agent-config --resolve ultrabrain --variant xhigh
 
 # Show help
 opencode-agent-config -h
@@ -166,6 +176,39 @@ The tool includes intelligent recommendations for different agent types:
 | **frontend-ui-ux-engineer** | UI/UX with visual understanding | Multimodal, Image input |
 | **document-writer** | Fast text generation | Speed, Text output |
 | **multimodal-looker** | Visual analysis & PDF understanding | Multimodal, Image/PDF input |
+
+## Category System
+
+The tool supports Oh My Opencode's category-based model selection system with 19 intelligent categories:
+
+| Category | Purpose | Default Model | Variant |
+|----------|---------|---------------|---------|
+| **ultrabrain** | Deep logical reasoning & complex architecture | openai/gpt-5.2-codex | xhigh |
+| **visual-engineering** | UI/UX, design, styling, animation | google/gemini-3-pro | - |
+| **deep** | Goal-oriented autonomous problem-solving | openai/gpt-5.2-codex | medium |
+| **artistry** | Highly creative, unconventional approaches | google/gemini-3-pro | max |
+| **quick** | Fast, trivial tasks (single file changes) | anthropic/claude-haiku-4-5 | - |
+| **writing** | Documentation, READMEs, technical writing | google/gemini-3-flash | - |
+| **unspecified-low** | General moderate effort tasks | anthropic/claude-sonnet-4-5 | - |
+| **unspecified-high** | General substantial effort tasks | anthropic/claude-opus-4-5 | max |
+| **plan-high** | High-effort planning tasks | - | - |
+| **code-main** | Main coding tasks | - | - |
+| **code-review** | Code review tasks | - | - |
+| **debug-strong** | Debugging tasks | - | - |
+| **multimodal-fast** | Fast multimodal tasks | - | - |
+| **research-pro** | Research tasks | - | - |
+| **free-worker** | Free-form tasks | - | - |
+| **secure-worker** | Security-related tasks | - | - |
+
+### Five-Tier Model Resolution
+
+Models are resolved in the following priority order:
+
+1. **UI Override** - Model selected in OpenCode UI (highest priority for primary agents)
+2. **User Config** - Explicit model in `oh-my-opencode.json`
+3. **Category Default** - Model from category configuration
+4. **Fallback Chain** - Provider-based fallback (anthropic → github-copilot → opencode)
+5. **System Default** - Global default from `opencode.json` (lowest priority)
 
 ## Model Capabilities Legend
 

@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-02-03
+
+### Breaking Changes
+- Migrated from agent-only configuration to category-based system
+- Existing configs will be automatically migrated on first run
+- Pre-migration backups are created automatically
+
+### Added
+- **Category System** - 19 intelligent task categories (ultrabrain, visual-engineering, quick, etc.)
+- **Five-Tier Model Resolution** - UI Override → User Config → Category Default → Fallback Chain → System Default
+- **Fallback Chain Support** - Automatic provider-based fallback for agents and categories
+  - Provider priority: anthropic → github-copilot → opencode → zai-coding-plan
+  - Fuzzy model matching (e.g., "claude-opus-4-5" matches "claude-opus-4-5-preview")
+  - Variant propagation from fallback chains (max, high, medium, xhigh)
+- **Variant Support** - Configure reasoning effort variants per agent/category
+- **Upstream Schema Fetching** - Automatic fetch and cache of Oh My Opencode schema
+  - 24-hour TTL for cached schema
+  - Graceful fallback to hardcoded constants
+- **Config Migration** - Automatic one-time migration from agent-only to category-based
+- **New CLI Commands:**
+  - `--validate` - Validate configuration and check model availability
+  - `--resolve <agent|category>` - Non-interactive model resolution
+- **Model Requirements Validation** - `requiresModel` field enforces model availability
+
+### Changed
+- Complete architecture refactor to support Oh My OpenCode's new category-based model selection
+- Agent model resolution now uses fallback chains instead of direct assignment
+- Configuration format now supports both `agents` and `categories` sections
+
 ## [0.5.0] - 2025-12-30
 
 ### Added
